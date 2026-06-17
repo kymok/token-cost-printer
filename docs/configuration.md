@@ -8,7 +8,10 @@
 [printer]
 driver = "escpos"
 transport = "usb"
-device = "/dev/tty.usbserial"
+manufacturer = "EPSON"
+vendor_id = "0x04b8"
+product_id = "0x0e1f"
+device = ""
 encoding = "cp932"
 cut = true
 ```
@@ -17,7 +20,7 @@ cut = true
 
 ```toml
 [receipt]
-columns = 46
+columns = 42
 font = "9x17"
 ```
 
@@ -34,13 +37,18 @@ path = "~/.local/share/codex-receipt/state.sqlite3"
 [printer]
 driver = "escpos"
 transport = "usb"
-device = "/dev/tty.usbserial"
+manufacturer = "EPSON"
+vendor_id = "0x04b8"
+product_id = "0x0e1f"
+device = ""
 encoding = "cp932"
 cut = true
 
 [receipt]
-columns = 46
+columns = 42
 font = "9x17"
 print_turn_receipt = true
 print_pr_receipt = true
 ```
+
+`device` が空なら macOS の USB VID/PID lookup で USB device URI を自動設定する。

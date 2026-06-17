@@ -30,19 +30,20 @@
 ### 1.4 印字フォーマット
 
 ```text
-[branch][spaces][HH:MM] ↑[input] ↓[output]
+[HH:MM] [branch][spaces]I:[input] O:[output]
 ```
 
 | 項目 | 配置 |
 |---|---|
+| time | 左端 |
 | branch | 左寄せ、溢れたら切り捨て |
-| time / input / output | 右寄せ |
-| columns | 46 |
-| branch columns | 28 |
+| input / output | 4桁幅で右寄せ |
+| columns | 42 |
+| branch columns | 22 |
 
 ```text
-feat/my-very-long-branch-nam 12:34 ↑150K ↓5.3K
-feat/branch                  12:34 ↑150K ↓5.3K
+12:34 feat/my-very-long-bran I:150K O:5.3K
+12:34 feat/branch            I:150K O:5.3K
 ```
 
 ### 1.5 印字条件
@@ -72,9 +73,31 @@ PR 作成完了 hook を受信したとき。
 
 ```text
 
-PR Created
-[target branch] ← [PR branch]
-Total:[spaces]↑[input] ↑[output]
+-- PR CREATED --
+
+[target branch] <- [PR branch]
+(+[additions] -[deletions])
+Total Input:  [input]
+Total Output: [output]
+
+"[quote]"
+— [fictional source]
+```
+
+`-- PR CREATED --` は ESC/POS の中央揃えと太字で印字する。
+quote は LLM が生成する架空引用。
+
+例：
+
+```text
+"Input is memory. Output is debt."
+— Codex Marginalia
+
+"A pull request is a polite disturbance."
+— CI Proverbs
+
+"Nothing enters main without first becoming paperwork."
+— Anonymous Maintainer
 ```
 
 ### 2.5 印字後更新

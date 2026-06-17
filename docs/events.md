@@ -61,4 +61,6 @@ PR 作成完了 hook。
 | `prNumber` | yes |
 | `targetBranch` | yes |
 | `prBranch` | yes |
+| `additions` | yes |
+| `deletions` | yes |
 | `prUrl` | no |

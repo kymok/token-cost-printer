@@ -18,6 +18,7 @@
 |---|---|
 | usage snapshot がない | 印字しない |
 | Git repo でない | repo 名を `unknown` として扱う |
+| USB printer が見つからない | 印字しない |
 | プリンタ失敗 | stderr に記録し、DB checkpoint は更新しない |
 | delta が負値 | usage reset とみなし current を delta として扱う |
 | 同じ PR の再検出 | `printed_prs` によりスキップ |
