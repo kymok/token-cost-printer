@@ -13,6 +13,7 @@ vendor_id = "0x04b8"
 product_id = "0x0e1f"
 device = ""
 encoding = "cp932"
+kanji = "shift_jis"
 cut = true
 ```
 
@@ -20,8 +21,10 @@ cut = true
 
 ```toml
 [receipt]
-columns = 42
-font = "9x17"
+font = "A"
+scale = 1
+columns = 35
+font_a_columns = 35
 ```
 
 ---
@@ -42,13 +45,16 @@ vendor_id = "0x04b8"
 product_id = "0x0e1f"
 device = ""
 encoding = "cp932"
+kanji = "shift_jis"
 cut = true
 
 [receipt]
-columns = 42
-font = "9x17"
-print_turn_receipt = true
+font = "A"
+scale = 1
+columns = 35
+font_a_columns = 35
 print_pr_receipt = true
 ```
 
 `device` が空なら macOS の USB VID/PID lookup で USB device URI を自動設定する。
+TM-m10 の58mm紙は Font A で35cpl。

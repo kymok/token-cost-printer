@@ -59,6 +59,7 @@ PR 作成完了 hook。
 | `type` = `pull-request-created` | yes |
 | `repoRoot` | yes |
 | `prNumber` | yes |
+| `prTitle` | yes |
 | `targetBranch` | yes |
 | `prBranch` | yes |
 | `additions` | yes |

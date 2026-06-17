@@ -1,6 +1,6 @@
 # レシート仕様
 
-## 1. turn receipt 仕様
+## 1. turn history 仕様
 
 ### 1.1 トリガー
 
@@ -14,9 +14,8 @@
 4. `thread_usage_snapshots` から現在 snapshot を読む。
 5. `turn_print_checkpoints` から前回印字 snapshot を読む。
 6. 差分を計算する。
-7. 差分があれば印字する。
+7. 差分があれば `branch_turn_history` に記録する。
 8. `turn_print_checkpoints` を更新する。
-9. `repo_totals` に差分を加算する。
 
 ### 1.3 差分計算
 
@@ -27,26 +26,7 @@
 
 負値は usage reset として current を delta にする。
 
-### 1.4 印字フォーマット
-
-```text
-[HH:MM] [branch][spaces]I:[input] O:[output]
-```
-
-| 項目 | 配置 |
-|---|---|
-| time | 左端 |
-| branch | 左寄せ、溢れたら切り捨て |
-| input / output | 4桁幅で右寄せ |
-| columns | 42 |
-| branch columns | 22 |
-
-```text
-12:34 feat/my-very-long-bran I:150K O:5.3K
-12:34 feat/branch            I:150K O:5.3K
-```
-
-### 1.5 印字条件
+### 1.4 記録条件
 
 input delta または output delta が 0 より大きい。
 
@@ -62,45 +42,55 @@ PR 作成完了 hook を受信したとき。
 
 `printed_prs` に `(repo_root, pr_number)` が存在する場合は印字しない。
 
-### 2.3 差分計算
-
-| delta | 計算 |
-|---|---|
-| input | repo total input tokens - PR checkpoint input tokens |
-| output | repo total output tokens - PR checkpoint output tokens |
-
-### 2.4 印字フォーマット
+### 2.3 印字フォーマット
 
 ```text
-
 -- PR CREATED --
 
-[target branch] <- [PR branch]
+PR #[number]
+[PR title]
+[target branch] ← [PR branch]
 (+[additions] -[deletions])
-Total Input:  [input]
-Total Output: [output]
+
+[summary]
+
+Total Input Tokens[spaces][input]
+Total Output Tokens[spaces][output]
+
+
+-- HISTORY --
+
+[YYYY-MM-DD HH:MM:SS][spaces]↑[input] ↓[output]
+
 
 "[quote]"
-— [fictional source]
+-- [fictional source]
 ```
 
 `-- PR CREATED --` は ESC/POS の中央揃えと太字で印字する。
+`-- HISTORY --` は ESC/POS の中央揃えと太字で印字する。
+PR title は1行で、35桁を超えたら切り捨てる。
+日本語を含む文字列は ESC/POS の漢字モードを有効化し、Shift-JIS 指定で CP932 出力する。
+summary は LLM が生成するPR要約。5行以内。
+Total は35桁。数値は右端に揃える。
 quote は LLM が生成する架空引用。
+HISTORY は PR branch に帰属する turn history を古い順に印字する。
+HISTORY は35桁。日時19桁、スペース3桁、矢印は各2桁、input/outputは4桁幅で左をスペース埋めする。
 
-例：
+quote 例：
 
 ```text
 "Input is memory. Output is debt."
-— Codex Marginalia
+-- Codex Marginalia
 
 "A pull request is a polite disturbance."
-— CI Proverbs
+-- CI Proverbs
 
 "Nothing enters main without first becoming paperwork."
-— Anonymous Maintainer
+-- Anonymous Maintainer
 ```
 
-### 2.5 印字後更新
+### 2.4 印字後更新
 
 `pr_checkpoints` と `printed_prs` を更新する。
 

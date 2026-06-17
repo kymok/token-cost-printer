@@ -22,24 +22,26 @@ SQLite を使用する。
 | `last_turn_id` | nullable |
 | `updated_at` | required |
 
-## 3. `repo_totals`
+## 3. `branch_turn_history`
 
 | column | note |
 |---|---|
-| `repo_root` | primary key |
-| `repo_name` | required |
-| `input_tokens` | default 0 |
-| `output_tokens` | default 0 |
+| `id` | primary key |
+| `repo_root` | required |
+| `branch_name` | required |
+| `turn_id` | required |
+| `input_delta` | required |
+| `output_delta` | required |
 | `updated_at` | required |
 
 ## 4. `pr_checkpoints`
 
 | column | note |
 |---|---|
-| `repo_root` | primary key |
+| `repo_root` | primary key with `branch_name` |
+| `branch_name` | primary key with `repo_root` |
 | `last_pr_number` | nullable |
-| `input_tokens` | default 0 |
-| `output_tokens` | default 0 |
+| `history_id` | nullable |
 | `updated_at` | required |
 
 ## 5. `printed_prs`
