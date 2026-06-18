@@ -20,6 +20,11 @@ DEFAULT_COSTS = {
     "gpt-5.4": {"input": 2.50, "cached_input": 0.25, "output": 15.00},
     "gpt-5.4-mini": {"input": 0.75, "cached_input": 0.075, "output": 4.50},
 }
+DISPLAY_MODELS = {
+    "gpt-5.5": "GPT-5.5",
+    "gpt-5.4": "GPT-5.4",
+    "gpt-5.4-mini": "GPT-5.4-Mini",
+}
 
 
 @dataclass
@@ -63,6 +68,10 @@ def token(n: int) -> str:
 
 def cost_key(s: str) -> str:
     return s.strip().casefold().replace(" ", "-")
+
+
+def display_model(s: str) -> str:
+    return DISPLAY_MODELS.get(cost_key(s), s)
 
 
 def costs(cfg: dict) -> dict[str, dict[str, float]]:
@@ -258,7 +267,7 @@ def render(args: argparse.Namespace, rows: list[dict], columns: int, rates: dict
         lines.append("")
         lines += [
             clip(row["title"] or row["id"], columns),
-            *([clip(str(row["model"]), columns)] if row.get("model") else []),
+            *([clip(display_model(str(row["model"])), columns)] if row.get("model") else []),
             *[clip(line, columns) for line in usage_lines(usage, columns, rates)],
         ]
     lines += ["", "", *quote_lines(q, columns), f"-- {source}", "", now]
