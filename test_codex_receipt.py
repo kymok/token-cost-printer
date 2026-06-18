@@ -50,12 +50,15 @@ class ReceiptTest(unittest.TestCase):
 
     def test_renders_cost_for_total_and_history(self):
         args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
-        rows = [{"id": "1", "title": "One", "rollout_path": None, "tokens_used": 1000}]
+        usage = c.Usage(input=1_200_000, cached=1_056_000, output=10_000, reasoning=2_000, total=1_210_000)
+        rows = [{"id": "1", "title": "One", "rollout_path": None, "tokens_used": 0}]
         rates = c.DEFAULT_COSTS["gpt-5.5"]
 
-        text = c.render(args, rows, 35, rates)
+        with patch.object(c, "latest_usage", return_value=usage):
+            text = c.render(args, rows, 35, rates)
 
-        self.assertEqual(sum(line.startswith("Cost:") and line.endswith("0.00 USD") for line in text.splitlines()), 2)
+        self.assertEqual(text.count("Input: 1.2M (88% cached)   1.25 USD"), 2)
+        self.assertEqual(text.count("Output: 10K                0.30 USD"), 2)
 
     def test_cost_uses_cached_input_rate(self):
         usage = c.Usage(input=2000, cached=500, output=600)

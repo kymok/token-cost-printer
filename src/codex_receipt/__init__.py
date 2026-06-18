@@ -79,10 +79,25 @@ def costs(cfg: dict) -> dict[str, dict[str, float]]:
     return rows
 
 
+def usd(value: float) -> str:
+    return f"{value:.2f} USD"
+
+
 def dollars(usage: Usage, rates: dict[str, float]) -> str:
     uncached = max(usage.input - usage.cached, 0)
     value = (uncached * rates["input"] + usage.cached * rates["cached_input"] + usage.output * rates["output"]) / 1_000_000
-    return f"{value:.2f} USD"
+    return usd(value)
+
+
+def usage_costs(usage: Usage, rates: dict[str, float]) -> dict[str, str]:
+    input_cost = (max(usage.input - usage.cached, 0) * rates["input"] + usage.cached * rates["cached_input"]) / 1_000_000
+    output_cost = usage.output * rates["output"] / 1_000_000
+    return {
+        "Input:": usd(input_cost),
+        "Output:": usd(output_cost),
+        "Reasoning:": usd(usage.reasoning * rates["output"] / 1_000_000),
+        "Total:": usd(input_cost + output_cost),
+    }
 
 
 def latest_usage(path: str | None, fallback_total: int | None) -> Usage:
@@ -169,22 +184,22 @@ def usage_lines(usage: Usage, columns: int, rates: dict[str, float] | None = Non
         "Reasoning:": token(usage.reasoning),
         "Total:": token(usage.total),
     }
-    if rates:
-        values["Cost:"] = dollars(usage, rates)
     value_end = max(map(width, values)) + 1 + max(width(v) for v in values.values())
 
     def line(label: str, value: str, suffix: str = "") -> str:
-        return label + " " * max(1, value_end - width(label) - width(value)) + value + suffix
+        if rates:
+            text = f"{label} {value}{suffix}"
+            cost = usage_costs(usage, rates)[label]
+            return text + " " * max(1, columns - width(text) - width(cost)) + cost
+        text = label + " " * max(1, value_end - width(label) - width(value)) + value + suffix
+        return text
 
-    lines = [
+    return [
         line("Input:", values["Input:"], cached_text),
         line("Output:", values["Output:"]),
         line("Reasoning:", values["Reasoning:"]),
         line("Total:", values["Total:"]),
     ]
-    if rates:
-        lines.append(line("Cost:", values["Cost:"]))
-    return lines
 
 
 def wrap_lines(text: str, columns: int) -> list[str]:
