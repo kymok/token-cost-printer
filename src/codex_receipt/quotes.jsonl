@@ -1,0 +1,200 @@
+{"quote":"Input is memory. Output is debt.","source":"Codex Marginalia"}
+{"quote":"A pull request is a polite disturbance.","source":"CI Proverbs"}
+{"quote":"Nothing enters main without first becoming paperwork.","source":"Anonymous Maintainer"}
+{"quote":"Every branch leaves a receipt.","source":"Merge Desk Notes"}
+{"quote":"Small diffs age better than grand designs.","source":"Review Room Wall"}
+{"quote":"Tokens spent in haste return as review comments.","source":"Build Ledger"}
+{"quote":"The printer knows what the dashboard forgets.","source":"Thermal Almanac"}
+{"quote":"A clean merge starts with a clean reason.","source":"Release Clerk"}
+{"quote":"Count the input before praising the output.","source":"Model Shop Rules"}
+{"quote":"A summary is a promise to the next reader.","source":"Maintainer Folklore"}
+{"quote":"Logs whisper. Receipts testify.","source":"Ops Counter"}
+{"quote":"The cheapest token is the one never asked for.","source":"Prompt Frugality"}
+{"quote":"A branch without context is just weather.","source":"Git Sayings"}
+{"quote":"Reviews are cheaper before lunch and before deploy.","source":"CI Proverbs"}
+{"quote":"A passing check is not a finished thought.","source":"Build Ledger"}
+{"quote":"The diff is the bill. The receipt is the story.","source":"Codex Marginalia"}
+{"quote":"Main is patient because branches are not.","source":"Anonymous Maintainer"}
+{"quote":"If it needs explaining twice, print it once.","source":"Thermal Almanac"}
+{"quote":"Output is easy. Understanding is expensive.","source":"Model Shop Rules"}
+{"quote":"A good PR spends tokens where humans save time.","source":"Review Room Wall"}
+{"quote":"The branch paid in prompts before it paid in tests.","source":"Merge Desk Notes"}
+{"quote":"Keep the receipt tomorrow asks questions.","source":"Ops Counter"}
+{"quote":"A small patch can still cast a long shadow.","source":"Maintainer Folklore"}
+{"quote":"Context is rent paid to future maintainers.","source":"Prompt Frugality"}
+{"quote":"The quiet diff is often the loudest fix.","source":"Release Clerk"}
+{"quote":"Every generated line should know why it exists.","source":"Codex Marginalia"}
+{"quote":"History is cheaper when printed before it fades.","source":"Thermal Almanac"}
+{"quote":"A branch name is a thesis in miniature.","source":"Git Sayings"}
+{"quote":"Never let a token hide behind a total.","source":"Build Ledger"}
+{"quote":"The merge button likes receipts.","source":"CI Proverbs"}
+{"quote":"A review starts where the summary stops.","source":"Review Room Wall"}
+{"quote":"The machine can count. The maintainer must care.","source":"Anonymous Maintainer"}
+{"quote":"A receipt turns local state into shared memory.","source":"Ops Counter"}
+{"quote":"Prompt lightly. Verify plainly.","source":"Model Shop Rules"}
+{"quote":"The best audit trail fits on paper.","source":"Release Clerk"}
+{"quote":"A total without breakdown is a shrug with numbers.","source":"Prompt Frugality"}
+{"quote":"Generated code still pays maintenance tax.","source":"Codex Marginalia"}
+{"quote":"If the branch was busy, let the receipt say so.","source":"Merge Desk Notes"}
+{"quote":"A failing test is cheaper than a silent receipt.","source":"Build Ledger"}
+{"quote":"Paper has no refresh button, so be honest.","source":"Thermal Almanac"}
+{"quote":"The diff asks for trust. The receipt offers evidence.","source":"Review Room Wall"}
+{"quote":"Tokens are not guilt, but they are signal.","source":"Model Shop Rules"}
+{"quote":"The shortest useful summary wins.","source":"Maintainer Folklore"}
+{"quote":"A branch is a conversation with timestamps.","source":"Git Sayings"}
+{"quote":"Do not hide a rewrite inside a whisper.","source":"Anonymous Maintainer"}
+{"quote":"Main accepts code, not vibes.","source":"CI Proverbs"}
+{"quote":"The printer is slow enough to make totals real.","source":"Ops Counter"}
+{"quote":"A cached token is still part of the meal.","source":"Prompt Frugality"}
+{"quote":"Reviewers forgive context sooner than surprise.","source":"Release Clerk"}
+{"quote":"Count first, celebrate later.","source":"Build Ledger"}
+{"quote":"The receipt is small because memory is not.","source":"Codex Marginalia"}
+{"quote":"A local thread becomes history when it is printed.","source":"Thermal Almanac"}
+{"quote":"Branches drift. Receipts pin them down.","source":"Git Sayings"}
+{"quote":"The output number is the smoke, not the fire.","source":"Model Shop Rules"}
+{"quote":"Every PR is a tiny accounting problem.","source":"Merge Desk Notes"}
+{"quote":"A good title saves three comments.","source":"Review Room Wall"}
+{"quote":"The deploy does not care who was tired.","source":"Ops Counter"}
+{"quote":"A token total is a map legend, not the map.","source":"Prompt Frugality"}
+{"quote":"Paperwork is just context with a deadline.","source":"Anonymous Maintainer"}
+{"quote":"The merge queue loves boring receipts.","source":"CI Proverbs"}
+{"quote":"If the history is blank, say so plainly.","source":"Release Clerk"}
+{"quote":"A quiet branch can still be expensive.","source":"Build Ledger"}
+{"quote":"Thermal paper remembers without logging in.","source":"Thermal Almanac"}
+{"quote":"Ask once, count once, print once.","source":"Codex Marginalia"}
+{"quote":"A diff without totals is a story without a scale.","source":"Review Room Wall"}
+{"quote":"The model spent tokens so the maintainer spends less time.","source":"Model Shop Rules"}
+{"quote":"Old threads make new receipts honest.","source":"Merge Desk Notes"}
+{"quote":"A branch is not done until someone can explain it.","source":"Maintainer Folklore"}
+{"quote":"The cheap abstraction is the one not added.","source":"Prompt Frugality"}
+{"quote":"Main is a door, not a suggestion box.","source":"Git Sayings"}
+{"quote":"CI asks what changed. The receipt asks what it cost.","source":"CI Proverbs"}
+{"quote":"The number at the bottom is never the whole story.","source":"Ops Counter"}
+{"quote":"A summary should survive the commute.","source":"Release Clerk"}
+{"quote":"The receipt is not blame. It is weather data.","source":"Build Ledger"}
+{"quote":"A token saved is a minute borrowed back.","source":"Codex Marginalia"}
+{"quote":"Review starts better when the branch introduces itself.","source":"Review Room Wall"}
+{"quote":"Do not make the printer explain your architecture.","source":"Thermal Almanac"}
+{"quote":"Every cached input has a past life.","source":"Model Shop Rules"}
+{"quote":"The best branch history has no plot twist.","source":"Git Sayings"}
+{"quote":"Paper cannot be paginated, so edit the summary.","source":"Maintainer Folklore"}
+{"quote":"A PR is a receipt for decisions already made.","source":"Anonymous Maintainer"}
+{"quote":"The build passed, but the reviewer still reads.","source":"CI Proverbs"}
+{"quote":"A local database can still tell the truth.","source":"Ops Counter"}
+{"quote":"Spend context where ambiguity would cost more.","source":"Prompt Frugality"}
+{"quote":"The merge desk prefers exact totals to heroic prose.","source":"Merge Desk Notes"}
+{"quote":"A printed total makes invisible work visible.","source":"Build Ledger"}
+{"quote":"If the title wraps, the idea might too.","source":"Thermal Almanac"}
+{"quote":"A quote at the end is cheaper than a dashboard.","source":"Codex Marginalia"}
+{"quote":"The reviewer wants the path, not the maze.","source":"Review Room Wall"}
+{"quote":"Reasoning tokens are scaffolding, not marble.","source":"Model Shop Rules"}
+{"quote":"Every branch eventually becomes archaeology.","source":"Git Sayings"}
+{"quote":"Paper is the oldest observability stack.","source":"Ops Counter"}
+{"quote":"A receipt turns a merge into an event.","source":"Release Clerk"}
+{"quote":"The fewer moving parts, the clearer the bill.","source":"Prompt Frugality"}
+{"quote":"A PR number is just a ticket until context arrives.","source":"Anonymous Maintainer"}
+{"quote":"CI records outcomes. Receipts record effort.","source":"CI Proverbs"}
+{"quote":"A branch can lie by omission. Totals help.","source":"Build Ledger"}
+{"quote":"The printer has one job and no roadmap.","source":"Thermal Almanac"}
+{"quote":"Ask the model less. Ask the tests more.","source":"Codex Marginalia"}
+{"quote":"The best review comment is prevented by a good summary.","source":"Review Room Wall"}
+{"quote":"Output without input is magic accounting.","source":"Model Shop Rules"}
+{"quote":"The merge desk sleeps better with numbers.","source":"Merge Desk Notes"}
+{"quote":"Short receipts make long histories usable.","source":"Maintainer Folklore"}
+{"quote":"A branch without totals still spent something.","source":"Git Sayings"}
+{"quote":"The pager never cared about elegant speculation.","source":"Ops Counter"}
+{"quote":"Every token should buy either code or clarity.","source":"Prompt Frugality"}
+{"quote":"The release notes begin in the receipt.","source":"Release Clerk"}
+{"quote":"A passing build is table stakes, not a receipt.","source":"CI Proverbs"}
+{"quote":"The local state is quiet until paper gives it a voice.","source":"Build Ledger"}
+{"quote":"Cut the paper after the truth, not before it.","source":"Thermal Almanac"}
+{"quote":"A diff is code talking. A receipt is code accounting.","source":"Codex Marginalia"}
+{"quote":"Reviewers read faster when surprises are numbered.","source":"Review Room Wall"}
+{"quote":"Cached context is still context.","source":"Model Shop Rules"}
+{"quote":"A branch title should not need a witness.","source":"Git Sayings"}
+{"quote":"The smallest useful record beats the grand archive.","source":"Maintainer Folklore"}
+{"quote":"A PR is polite because it waits to be judged.","source":"Anonymous Maintainer"}
+{"quote":"CI is a gate. Context is the key.","source":"CI Proverbs"}
+{"quote":"The receipt does not optimize it remembers.","source":"Ops Counter"}
+{"quote":"Cheap prompts are clear prompts.","source":"Prompt Frugality"}
+{"quote":"The merge desk counts because memory rounds down.","source":"Merge Desk Notes"}
+{"quote":"A total is useful only when it can be trusted.","source":"Build Ledger"}
+{"quote":"The printer rewards short lines and honest totals.","source":"Thermal Almanac"}
+{"quote":"A model session is a workshop with a meter running.","source":"Codex Marginalia"}
+{"quote":"The review queue is no place for riddles.","source":"Review Room Wall"}
+{"quote":"Output tokens are footprints, not progress by themselves.","source":"Model Shop Rules"}
+{"quote":"The branch that explains itself merges cleaner.","source":"Git Sayings"}
+{"quote":"Summaries rot slower than memory.","source":"Maintainer Folklore"}
+{"quote":"Main does not need drama. It needs evidence.","source":"Anonymous Maintainer"}
+{"quote":"A green check and a clear receipt make a shorter meeting.","source":"CI Proverbs"}
+{"quote":"If it matters later, print it now.","source":"Ops Counter"}
+{"quote":"Frugal prompts leave fewer mysteries.","source":"Prompt Frugality"}
+{"quote":"The merge desk trusts boring arithmetic.","source":"Merge Desk Notes"}
+{"quote":"A fallback total is better than a silent gap.","source":"Build Ledger"}
+{"quote":"Thermal paper is finite. So is reviewer patience.","source":"Thermal Almanac"}
+{"quote":"The model can draft. The receipt can confess.","source":"Codex Marginalia"}
+{"quote":"A reviewer should not have to reverse engineer the conversation.","source":"Review Room Wall"}
+{"quote":"Reasoning is useful, but totals are accountable.","source":"Model Shop Rules"}
+{"quote":"A branch is a temporary home for permanent choices.","source":"Git Sayings"}
+{"quote":"The best paperwork is just enough to be useful.","source":"Maintainer Folklore"}
+{"quote":"A pull request is a question with a diff attached.","source":"Anonymous Maintainer"}
+{"quote":"CI says possible. Review says acceptable.","source":"CI Proverbs"}
+{"quote":"The receipt is a small fence around a large context.","source":"Ops Counter"}
+{"quote":"Spend fewer tokens than the next maintainer would spend guessing.","source":"Prompt Frugality"}
+{"quote":"The merge desk sees every shortcut eventually.","source":"Merge Desk Notes"}
+{"quote":"A blank history is a signal too.","source":"Build Ledger"}
+{"quote":"The printer makes invisible context hold still.","source":"Thermal Almanac"}
+{"quote":"A prompt is a cost center with syntax.","source":"Codex Marginalia"}
+{"quote":"Review comments are interest on missing context.","source":"Review Room Wall"}
+{"quote":"The total is not the value it is the weight.","source":"Model Shop Rules"}
+{"quote":"Branches are cheap until they are forgotten.","source":"Git Sayings"}
+{"quote":"The maintainer tax is paid in context.","source":"Maintainer Folklore"}
+{"quote":"No diff enters main alone.","source":"Anonymous Maintainer"}
+{"quote":"A checkmark is better with a receipt stapled to it.","source":"CI Proverbs"}
+{"quote":"Operational memory starts as a tiny note.","source":"Ops Counter"}
+{"quote":"Ask for the answer, not the theater around it.","source":"Prompt Frugality"}
+{"quote":"The merge desk likes numbers it can fit in one line.","source":"Merge Desk Notes"}
+{"quote":"Totals without timestamps are half awake.","source":"Build Ledger"}
+{"quote":"Feed before cutting. Think before merging.","source":"Thermal Almanac"}
+{"quote":"The receipt is the shadow of the session.","source":"Codex Marginalia"}
+{"quote":"The cleanest review begins before the first comment.","source":"Review Room Wall"}
+{"quote":"The model remembers what the prompt pays for.","source":"Model Shop Rules"}
+{"quote":"A branch is a receipt waiting for a printer.","source":"Git Sayings"}
+{"quote":"Context is cheaper when captured warm.","source":"Maintainer Folklore"}
+{"quote":"The main branch deserves receipts, not rumors.","source":"Anonymous Maintainer"}
+{"quote":"CI is fast because it has no feelings.","source":"CI Proverbs"}
+{"quote":"A paper trail can start with thirty-five columns.","source":"Ops Counter"}
+{"quote":"Prompt debt compounds in review.","source":"Prompt Frugality"}
+{"quote":"The merge desk is allergic to mystery totals.","source":"Merge Desk Notes"}
+{"quote":"A fallback is a promise to stay useful.","source":"Build Ledger"}
+{"quote":"The cutter is final. The summary should be too.","source":"Thermal Almanac"}
+{"quote":"A session with no receipt becomes folklore.","source":"Codex Marginalia"}
+{"quote":"Reviewers trust code faster when context is close.","source":"Review Room Wall"}
+{"quote":"Input is the pantry. Output is the plate.","source":"Model Shop Rules"}
+{"quote":"Branches are temporary. Decisions are not.","source":"Git Sayings"}
+{"quote":"A useful note beats a perfect archive nobody opens.","source":"Maintainer Folklore"}
+{"quote":"A PR is where private work learns manners.","source":"Anonymous Maintainer"}
+{"quote":"CI counts failures. Receipts count effort.","source":"CI Proverbs"}
+{"quote":"The receipt makes local work portable.","source":"Ops Counter"}
+{"quote":"The best prompt is short, specific, and checked.","source":"Prompt Frugality"}
+{"quote":"The merge desk does not round down surprise.","source":"Merge Desk Notes"}
+{"quote":"Timestamps make totals accountable.","source":"Build Ledger"}
+{"quote":"The printer prefers facts over formatting.","source":"Thermal Almanac"}
+{"quote":"A token count is a quiet confession.","source":"Codex Marginalia"}
+{"quote":"A review without context is archaeology with deadlines.","source":"Review Room Wall"}
+{"quote":"Output should earn its paper.","source":"Model Shop Rules"}
+{"quote":"A branch is a short story in commits.","source":"Git Sayings"}
+{"quote":"The next maintainer is the real audience.","source":"Maintainer Folklore"}
+{"quote":"Main is not a scrapbook.","source":"Anonymous Maintainer"}
+{"quote":"The green check opens the door context walks through.","source":"CI Proverbs"}
+{"quote":"A receipt is observability you can hold.","source":"Ops Counter"}
+{"quote":"Do not spend tokens to avoid writing one clear sentence.","source":"Prompt Frugality"}
+{"quote":"The merge desk wants cost, context, and quiet.","source":"Merge Desk Notes"}
+{"quote":"A total fallback keeps the receipt honest enough.","source":"Build Ledger"}
+{"quote":"The last line should not hide under the cutter.","source":"Thermal Almanac"}
+{"quote":"A generated diff still needs a human receipt.","source":"Codex Marginalia"}
+{"quote":"The best reviewer is not surprised twice.","source":"Review Room Wall"}
+{"quote":"Context turns token spend into engineering signal.","source":"Model Shop Rules"}
+{"quote":"A branch is cheap understanding it is not.","source":"Git Sayings"}
+{"quote":"Write the note while the reason is still warm.","source":"Maintainer Folklore"}
+{"quote":"A PR is a request, not a verdict.","source":"Anonymous Maintainer"}
