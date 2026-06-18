@@ -11,6 +11,7 @@ transport = "usb"
 manufacturer = "EPSON"
 vendor_id = "0x04b8"
 product_id = "0x0e1f"
+model = "EPSON TM-m10"
 device = ""
 encoding = "cp932"
 kanji = "shift_jis"
@@ -40,6 +41,7 @@ transport = "usb"
 manufacturer = "EPSON"
 vendor_id = "0x04b8"
 product_id = "0x0e1f"
+model = "EPSON TM-m10"
 device = ""
 encoding = "cp932"
 kanji = "shift_jis"
@@ -53,5 +55,6 @@ font_a_columns = 35
 print_pr_receipt = true
 ```
 
-`device` は `/dev/usb/lp0` のようなデバイスパス、または `EPSON_TM_m10_JPN` のようなCUPSプリンタ名。
+`model` は CUPS の有効プリンタ一覧から部分一致で自動選択する機種名。
+`device` は `/dev/usb/lp0` のようなデバイスパス、または `EPSON_TM_m10_JPN` のようなCUPSプリンタ名。指定すると `model` より優先される。
 TM-m10 の58mm紙は Font A で35cpl。

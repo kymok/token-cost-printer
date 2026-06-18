@@ -114,6 +114,19 @@ class ReceiptTest(unittest.TestCase):
 
         run.assert_called_once_with(["lpr", "-P", "EPSON_TM_m10_JPN", "-o", "raw"], input=b"receipt", check=True)
 
+    def test_finds_enabled_cups_printer_by_model(self):
+        def output(cmd, **_kwargs):
+            if cmd == ["lpstat", "-e"]:
+                return "TM_m10_New\n"
+            if cmd == ["lpstat", "-v"]:
+                return "device for TM_m10_New: usb://EPSON/TM-m10?serial=NEW\n"
+            if cmd == ["lpstat", "-l", "-p"]:
+                return "printer TM_m10_New is idle. enabled since today\n"
+            raise AssertionError(cmd)
+
+        with patch.object(c.subprocess, "check_output", side_effect=output):
+            self.assertEqual(c.find_printer("EPSON TM-m10"), "TM_m10_New")
+
     def test_loads_200_jsonl_quotes(self):
         self.assertEqual(len(c.quotes()), 200)
 

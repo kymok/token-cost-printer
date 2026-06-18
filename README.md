@@ -50,7 +50,7 @@ codex-receipt print \
 
 ```toml
 [printer]
-device = "EPSON_TM_m10_JPN"
+model = "EPSON TM-m10"
 encoding = "cp932"
 cut = true
 kanji = true
@@ -58,6 +58,8 @@ kanji = true
 [receipt]
 columns = 35
 ```
+
+`device` に CUPS プリンタ名か `/dev/usb/lp0` のようなデバイスパスを固定指定することもできます。
 
 ## 何を集計するか
 
