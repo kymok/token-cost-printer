@@ -244,6 +244,54 @@ def send_printer(device: str, data: bytes) -> None:
     subprocess.run(["lpr", "-P", device, "-o", "raw"], input=data, check=True)
 
 
+def printer_key(s: str) -> str:
+    return "".join(c for c in s.casefold() if c.isalnum())
+
+
+def cups_printers() -> dict[str, str]:
+    try:
+        enabled = subprocess.check_output(["lpstat", "-e"], text=True, stderr=subprocess.DEVNULL).split()
+    except (OSError, subprocess.SubprocessError):
+        enabled = []
+    printers = {name: name for name in enabled}
+    try:
+        for line in subprocess.check_output(["lpstat", "-v"], text=True, stderr=subprocess.DEVNULL).splitlines():
+            prefix = "device for "
+            if line.startswith(prefix) and ": " in line:
+                name, value = line[len(prefix) :].split(": ", 1)
+                if not enabled or name in printers:
+                    printers.setdefault(name, name)
+                    printers[name] += "\n" + value
+    except (OSError, subprocess.SubprocessError):
+        pass
+    try:
+        current = ""
+        for line in subprocess.check_output(["lpstat", "-l", "-p"], text=True, stderr=subprocess.DEVNULL).splitlines():
+            if line.startswith("printer "):
+                current = line.split()[1]
+            if current and (not enabled or current in printers):
+                printers.setdefault(current, current)
+                printers[current] += "\n" + line
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return printers
+
+
+def find_printer(model: str) -> str:
+    needle = model.casefold()
+    key = printer_key(model)
+    matches = [
+        name
+        for name, info in cups_printers().items()
+        if needle in info.casefold() or (key and key in printer_key(info))
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        raise RuntimeError(f"no CUPS printer matches printer.model={model!r}")
+    raise RuntimeError(f"multiple CUPS printers match printer.model={model!r}: {', '.join(matches)}")
+
+
 def config(path: Path) -> dict:
     if path.expanduser().exists():
         with open(path.expanduser(), "rb") as f:
@@ -265,8 +313,14 @@ def print_cmd(args: argparse.Namespace) -> int:
         print(text, end="")
         return 0
     device = args.device or printer.get("device") or ""
+    if not device and (args.model or printer.get("model")):
+        try:
+            device = find_printer(args.model or printer["model"])
+        except RuntimeError as e:
+            print(f"codex-receipt: {e}", file=sys.stderr)
+            return 2
     if not device:
-        print("codex-receipt: printer device not configured; use --dry-run or set printer.device", file=sys.stderr)
+        print("codex-receipt: printer device not configured; use --dry-run or set printer.device/model", file=sys.stderr)
         return 2
     try:
         send_printer(
@@ -301,6 +355,7 @@ def parser() -> argparse.ArgumentParser:
     pr.add_argument("--config", default="~/.config/codex-receipt/config.toml")
     pr.add_argument("--columns", type=int)
     pr.add_argument("--device")
+    pr.add_argument("--model")
     pr.add_argument("--dry-run", action="store_true")
     pr.set_defaults(func=print_cmd)
     return p
