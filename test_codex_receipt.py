@@ -81,6 +81,11 @@ class ReceiptTest(unittest.TestCase):
         self.assertIn("supercalifragilisticexpialidocious.", lines)
         self.assertIn("acceptable.", "\n".join(c.quote_lines("CI says possible. Review says acceptable.", 35)))
 
+    def test_summary_lines_wrap_and_stop_at_eight_lines(self):
+        lines = c.summary_lines("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen", 10)
+
+        self.assertEqual(lines, ["one two", "three four", "five six", "seven", "eight nine", "ten eleven", "twelve", "thirteen"])
+
     def test_escpos_enables_shift_jis_kanji_mode(self):
         data = c.escpos("2026-06-18T12:00:00\n\n\n-- PR CREATED --\n\n\nmain ← feature\n", "cp932", False)
 

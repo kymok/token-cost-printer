@@ -67,7 +67,7 @@ MM/DD HH:MM [thread title]
 `-- HISTORY --` は ESC/POS の中央揃えと太字で印字する。
 PR title は1行で、35桁を超えたら切り捨てる。
 日本語を含む文字列は ESC/POS の漢字モードを有効化し、Shift-JIS 指定で CP932 出力する。
-summary は `--summary` で受け取る。5行以内。
+summary は `--summary` で受け取る。8行以内。
 Total は35桁。数値は右端に揃える。
 quote は同梱 quote から1つ選ぶ。
 HISTORY は PR branch に帰属する thread usage を古い順に印字する。

@@ -152,8 +152,8 @@ def usage_lines(usage: Usage, columns: int) -> list[str]:
     ]
 
 
-def quote_lines(quote: str, columns: int) -> list[str]:
-    words = quote.replace(";", "").split()
+def wrap_lines(text: str, columns: int) -> list[str]:
+    words = text.split()
     lines = []
     line = ""
     for word in words:
@@ -165,6 +165,14 @@ def quote_lines(quote: str, columns: int) -> list[str]:
                 lines.append(line)
             line = word
     return lines + ([line] if line else [])
+
+
+def quote_lines(quote: str, columns: int) -> list[str]:
+    return wrap_lines(quote.replace(";", ""), columns)
+
+
+def summary_lines(summary: str, columns: int) -> list[str]:
+    return [line for paragraph in summary.splitlines() for line in wrap_lines(paragraph, columns)][:8]
 
 
 def render(args: argparse.Namespace, rows: list[dict], columns: int) -> str:
@@ -186,7 +194,7 @@ def render(args: argparse.Namespace, rows: list[dict], columns: int) -> str:
         clip(f"{args.target_branch} ← {args.pr_branch}", columns),
         f"(+{args.additions} -{args.deletions})",
         "",
-        *[clip(line, columns) for line in args.summary.splitlines()[:5]],
+        *summary_lines(args.summary, columns),
         "",
         *[clip(line, columns) for line in usage_lines(total, columns)],
         "",
