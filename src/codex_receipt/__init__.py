@@ -14,6 +14,12 @@ from pathlib import Path
 
 
 FALLBACK_QUOTES = [("Input is memory. Output is debt.", "Codex Marginalia")]
+DEFAULT_COST_MODEL = "gpt-5.5"
+DEFAULT_COSTS = {
+    "gpt-5.5": {"input": 5.00, "cached_input": 0.50, "output": 30.00},
+    "gpt-5.4": {"input": 2.50, "cached_input": 0.25, "output": 15.00},
+    "gpt-5.4-mini": {"input": 0.75, "cached_input": 0.075, "output": 4.50},
+}
 
 
 @dataclass
@@ -53,6 +59,30 @@ def token(n: int) -> str:
             v = n / base
             return (f"{v:.1f}" if v < 10 else f"{v:.0f}") + suffix
     return str(n)
+
+
+def cost_key(s: str) -> str:
+    return s.strip().casefold().replace(" ", "-")
+
+
+def costs(cfg: dict) -> dict[str, dict[str, float]]:
+    rows = DEFAULT_COSTS | {}
+    for row in cfg.get("cost", {}).get("models", []):
+        try:
+            rows[cost_key(str(row["name"]))] = {
+                "input": float(row["input"]),
+                "cached_input": float(row["cached_input"]),
+                "output": float(row["output"]),
+            }
+        except (KeyError, TypeError, ValueError):
+            pass
+    return rows
+
+
+def dollars(usage: Usage, rates: dict[str, float]) -> str:
+    uncached = max(usage.input - usage.cached, 0)
+    value = (uncached * rates["input"] + usage.cached * rates["cached_input"] + usage.output * rates["output"]) / 1_000_000
+    return f"{value:.2f} USD"
 
 
 def latest_usage(path: str | None, fallback_total: int | None) -> Usage:
@@ -130,7 +160,7 @@ def quotes() -> list[tuple[str, str]]:
     return FALLBACK_QUOTES
 
 
-def usage_lines(usage: Usage, columns: int) -> list[str]:
+def usage_lines(usage: Usage, columns: int, rates: dict[str, float] | None = None) -> list[str]:
     cached = round(usage.cached * 100 / usage.input) if usage.input else 0
     cached_text = f" ({cached}% cached)"
     values = {
@@ -139,17 +169,22 @@ def usage_lines(usage: Usage, columns: int) -> list[str]:
         "Reasoning:": token(usage.reasoning),
         "Total:": token(usage.total),
     }
+    if rates:
+        values["Cost:"] = dollars(usage, rates)
     value_end = max(map(width, values)) + 1 + max(width(v) for v in values.values())
 
     def line(label: str, value: str, suffix: str = "") -> str:
         return label + " " * max(1, value_end - width(label) - width(value)) + value + suffix
 
-    return [
+    lines = [
         line("Input:", values["Input:"], cached_text),
         line("Output:", values["Output:"]),
         line("Reasoning:", values["Reasoning:"]),
         line("Total:", values["Total:"]),
     ]
+    if rates:
+        lines.append(line("Cost:", values["Cost:"]))
+    return lines
 
 
 def wrap_lines(text: str, columns: int) -> list[str]:
@@ -175,7 +210,7 @@ def summary_lines(summary: str, columns: int) -> list[str]:
     return [line for paragraph in summary.splitlines() for line in wrap_lines(paragraph, columns)][:8]
 
 
-def render(args: argparse.Namespace, rows: list[dict], columns: int) -> str:
+def render(args: argparse.Namespace, rows: list[dict], columns: int, rates: dict[str, float] | None = None) -> str:
     usages = [(row, latest_usage(row["rollout_path"], row["tokens_used"])) for row in rows]
     total = Usage(
         sum(u.input for _, u in usages),
@@ -196,7 +231,7 @@ def render(args: argparse.Namespace, rows: list[dict], columns: int) -> str:
         "",
         *summary_lines(args.summary, columns),
         "",
-        *[clip(line, columns) for line in usage_lines(total, columns)],
+        *[clip(line, columns) for line in usage_lines(total, columns, rates)],
         "",
         "",
         "-- HISTORY --",
@@ -205,7 +240,7 @@ def render(args: argparse.Namespace, rows: list[dict], columns: int) -> str:
         lines.append("")
         lines += [
             clip(row["title"] or row["id"], columns),
-            *[clip(line, columns) for line in usage_lines(usage, columns)],
+            *[clip(line, columns) for line in usage_lines(usage, columns, rates)],
         ]
     lines += ["", "", *quote_lines(q, columns), f"-- {source}", "", now]
     return "\n".join(lines) + "\n"
@@ -304,8 +339,13 @@ def print_cmd(args: argparse.Namespace) -> int:
     receipt = cfg.get("receipt", {})
     printer = cfg.get("printer", {})
     columns = int(args.columns or receipt.get("columns") or 35)
+    cost_model = cost_key(args.cost_model or cfg.get("cost", {}).get("model") or DEFAULT_COST_MODEL)
+    rates = costs(cfg).get(cost_model)
+    if not rates:
+        print(f"codex-receipt: unknown cost model {cost_model!r}", file=sys.stderr)
+        return 2
     try:
-        text = render(args, threads(Path(args.state_db).expanduser(), args.repo_root, args.pr_branch), columns)
+        text = render(args, threads(Path(args.state_db).expanduser(), args.repo_root, args.pr_branch), columns, rates)
     except OSError as e:
         print(f"codex-receipt: {e}", file=sys.stderr)
         return 2
@@ -354,6 +394,7 @@ def parser() -> argparse.ArgumentParser:
     pr.add_argument("--state-db", default="~/.codex/state_5.sqlite")
     pr.add_argument("--config", default="~/.config/codex-receipt/config.toml")
     pr.add_argument("--columns", type=int)
+    pr.add_argument("--cost-model")
     pr.add_argument("--device")
     pr.add_argument("--model")
     pr.add_argument("--dry-run", action="store_true")
