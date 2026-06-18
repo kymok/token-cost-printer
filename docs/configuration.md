@@ -34,9 +34,6 @@ font_a_columns = 35
 `~/.config/codex-receipt/config.toml`
 
 ```toml
-[database]
-path = "~/.local/share/codex-receipt/state.sqlite3"
-
 [printer]
 driver = "escpos"
 transport = "usb"

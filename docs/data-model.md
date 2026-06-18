@@ -1,53 +1,22 @@
 # データモデル
 
-SQLite を使用する。
+Codex の利用量は `~/.codex/state_5.sqlite` から読み、自前 DB は持たない。
 
-## 1. `thread_usage_snapshots`
+## 1. Codex `threads`
 
-| column | note |
-|---|---|
-| `thread_id` | primary key |
-| `repo_root` | nullable |
-| `input_tokens` | default 0 |
-| `output_tokens` | default 0 |
-| `updated_at` | required |
-
-## 2. `turn_print_checkpoints`
+読み取り専用。
 
 | column | note |
 |---|---|
-| `thread_id` | primary key |
-| `input_tokens` | default 0 |
-| `output_tokens` | default 0 |
-| `last_turn_id` | nullable |
-| `updated_at` | required |
+| `id` | thread id |
+| `git_origin_url` | repo 判定 |
+| `git_branch` | branch 判定 |
+| `cwd` | fallback repo 判定 |
+| `tokens_used` | total token fallback |
+| `rollout_path` | token breakdown JSONL |
+| `title` | receipt 表示用 |
+| `updated_at_ms` | 並び順 |
 
-## 3. `branch_turn_history`
+## 2. 同梱 quote
 
-| column | note |
-|---|---|
-| `id` | primary key |
-| `repo_root` | required |
-| `branch_name` | required |
-| `turn_id` | required |
-| `input_delta` | required |
-| `output_delta` | required |
-| `updated_at` | required |
-
-## 4. `pr_checkpoints`
-
-| column | note |
-|---|---|
-| `repo_root` | primary key with `branch_name` |
-| `branch_name` | primary key with `repo_root` |
-| `last_pr_number` | nullable |
-| `history_id` | nullable |
-| `updated_at` | required |
-
-## 5. `printed_prs`
-
-| column | note |
-|---|---|
-| `repo_root` | primary key with `pr_number` |
-| `pr_number` | primary key with `repo_root` |
-| `printed_at` | required |
+本体に架空 quote を 200 個程度同梱する。実行時に1つ選んで印字する。

@@ -1,67 +1,68 @@
 # イベント入力
 
-## 1. token usage 更新
+## 1. CLI 入力
+
+#### 入力元
+
+`codex-receipt print` のコマンドライン引数。
+
+#### 入力
+
+| option | 必須 |
+|---|---|
+| `--repo-root` | yes |
+| `--pr-number` | yes |
+| `--pr-title` | yes |
+| `--target-branch` | yes |
+| `--pr-branch` | yes |
+| `--additions` | yes |
+| `--deletions` | yes |
+| `--summary` | yes |
+| `--pr-url` | no |
+
+---
+
+## 2. Codex thread DB
 
 #### 入力元
 
 ```text
-thread/tokenUsage/updated
+~/.codex/state_5.sqlite
 ```
 
-#### 正規化後データ
+#### 読み取り対象
 
-| field | 必須 |
+| table | field |
 |---|---|
-| `threadId` | yes |
-| `inputTokens` | yes |
-| `outputTokens` | yes |
-| `updatedAt` | yes |
+| `threads` | `id` |
+| `threads` | `git_origin_url` |
+| `threads` | `git_branch` |
+| `threads` | `cwd` |
+| `threads` | `tokens_used` |
+| `threads` | `rollout_path` |
+| `threads` | `title` |
+| `threads` | `updated_at_ms` |
 
-#### field 正規化
-
-| 正規化後 | 入力候補 |
-|---|---|
-| `inputTokens` | `input_tokens`, `inputTokens`, `input` |
-| `outputTokens` | `output_tokens`, `outputTokens`, `output` |
-
-`cached_input_tokens` は使わない。
+PR branch に関連する thread は、`--repo-root` から解決した `git_origin_url` と `--pr-branch` で絞る。
 
 ---
 
-## 2. turn 完了
+## 3. rollout JSONL
 
 #### 入力元
 
-Codex `notify` の `agent-turn-complete`。
+`threads.rollout_path` が指す JSONL。
 
-#### payload
+#### 読み取り対象
 
-| field | 必須 |
-|---|---|
-| `type` = `agent-turn-complete` | yes |
-| `thread-id` | yes |
-| `turn-id` | yes |
-| `cwd` | no |
-| `last-assistant-message` | no |
+最新の `type = event_msg` かつ `payload.type = token_count` を読む。
 
----
+| field |
+|---|
+| `payload.info.total_token_usage.input_tokens` |
+| `payload.info.total_token_usage.cached_input_tokens` |
+| `payload.info.total_token_usage.output_tokens` |
+| `payload.info.total_token_usage.reasoning_output_tokens` |
+| `payload.info.total_token_usage.total_tokens` |
 
-## 3. PR 作成完了
-
-#### 入力元
-
-PR 作成完了 hook。
-
-#### payload
-
-| field | 必須 |
-|---|---|
-| `type` = `pull-request-created` | yes |
-| `repoRoot` | yes |
-| `prNumber` | yes |
-| `prTitle` | yes |
-| `targetBranch` | yes |
-| `prBranch` | yes |
-| `additions` | yes |
-| `deletions` | yes |
-| `prUrl` | no |
+`cached_input_tokens` は input の内数、`reasoning_output_tokens` は output の内数として扱う。
