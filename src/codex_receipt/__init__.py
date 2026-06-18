@@ -140,9 +140,11 @@ def threads(state_db: Path, repo_root: str, branch: str) -> list[dict]:
     con = sqlite3.connect(state_db.expanduser())
     con.row_factory = sqlite3.Row
     try:
+        thread_columns = {row[1] for row in con.execute("PRAGMA table_info(threads)")}
+        model_column = ", model" if "model" in thread_columns else ""
         rows = con.execute(
-            """
-            SELECT id, git_origin_url, git_branch, cwd, tokens_used, rollout_path, title, updated_at_ms
+            f"""
+            SELECT id, git_origin_url, git_branch, cwd, tokens_used, rollout_path, title, updated_at_ms{model_column}
             FROM threads
             WHERE git_branch = ?
             ORDER BY updated_at_ms
@@ -177,7 +179,7 @@ def quotes() -> list[tuple[str, str]]:
 
 def usage_lines(usage: Usage, columns: int, rates: dict[str, float] | None = None) -> list[str]:
     cached = round(usage.cached * 100 / usage.input) if usage.input else 0
-    cached_text = f" ({cached}% cached)"
+    cached_text = f" (C: {cached}%)"
     values = {
         "Input:": token(usage.input),
         "Output:": token(usage.output),
@@ -187,11 +189,12 @@ def usage_lines(usage: Usage, columns: int, rates: dict[str, float] | None = Non
     value_end = max(map(width, values)) + 1 + max(width(v) for v in values.values())
 
     def line(label: str, value: str, suffix: str = "") -> str:
-        if rates:
-            text = f"{label} {value}{suffix}"
-            cost = usage_costs(usage, rates)[label]
-            return text + " " * max(1, columns - width(text) - width(cost)) + cost
         text = label + " " * max(1, value_end - width(label) - width(value)) + value + suffix
+        if rates:
+            cost = usage_costs(usage, rates)[label]
+            if width(text) + 1 + width(cost) > columns:
+                text = clip(text, columns - width(cost) - 1)
+            return text + " " * max(1, columns - width(text) - width(cost)) + cost
         return text
 
     return [
@@ -255,6 +258,7 @@ def render(args: argparse.Namespace, rows: list[dict], columns: int, rates: dict
         lines.append("")
         lines += [
             clip(row["title"] or row["id"], columns),
+            *([clip(str(row["model"]), columns)] if row.get("model") else []),
             *[clip(line, columns) for line in usage_lines(usage, columns, rates)],
         ]
     lines += ["", "", *quote_lines(q, columns), f"-- {source}", "", now]

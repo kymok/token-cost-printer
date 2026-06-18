@@ -39,8 +39,8 @@ def main() -> int:
         )
         db = root / "state.sqlite"
         con = sqlite3.connect(db)
-        con.execute("CREATE TABLE threads (id TEXT, git_origin_url TEXT, git_branch TEXT, cwd TEXT, tokens_used INTEGER, rollout_path TEXT, title TEXT, updated_at_ms INTEGER)")
-        con.execute("INSERT INTO threads VALUES ('demo', '', 'demo/cost-estimate', ?, 0, ?, 'Demo cost receipt', 0)", (str(root), str(rollout)))
+        con.execute("CREATE TABLE threads (id TEXT, git_origin_url TEXT, git_branch TEXT, cwd TEXT, tokens_used INTEGER, rollout_path TEXT, title TEXT, updated_at_ms INTEGER, model TEXT)")
+        con.execute("INSERT INTO threads VALUES ('demo', '', 'demo/cost-estimate', ?, 0, ?, 'Demo cost receipt', 0, 'gpt-5.5')", (str(root), str(rollout)))
         con.commit()
         con.close()
         return codex_receipt.main(

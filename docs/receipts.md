@@ -55,8 +55,10 @@ Total Output Tokens[spaces][output]
 
 -- HISTORY --
 
-MM/DD HH:MM [thread title]
-↑[input]/[cached percent] ↓[output] *[reasoning] Total: [total]
+[thread title]
+[model]
+Input: [input] (C: [cached percent]) [cost]
+Output: [output] [cost]
 
 
 "[quote]"
@@ -72,11 +74,8 @@ Total は35桁。数値は右端に揃える。
 Cost は `xxx.xx USD` 形式で各 usage 行の右端に印字する。
 quote は同梱 quote から1つ選ぶ。
 HISTORY は PR branch に帰属する thread usage を古い順に印字する。
-HISTORY は thread ごとに2行印字する。
-1行目は `MM/DD HH:MM [thread title]`。
-2行目は `↑150K/88% ↓5.3K *1.3K Total: 160K`。
-`/[cached percent]` は input に占める `cached_input_tokens` の割合。
-`*[reasoning]` は `reasoning_output_tokens`。
+HISTORY は thread ごとに title、model、usage を印字する。
+`(C: [cached percent])` は input に占める `cached_input_tokens` の割合。
 
 quote 例：
 
