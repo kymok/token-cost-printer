@@ -53,5 +53,5 @@ font_a_columns = 35
 print_pr_receipt = true
 ```
 
-`device` が空なら macOS の USB VID/PID lookup で USB device URI を自動設定する。
+`device` は `/dev/usb/lp0` のようなデバイスパス、または `EPSON_TM_m10_JPN` のようなCUPSプリンタ名。
 TM-m10 の58mm紙は Font A で35cpl。

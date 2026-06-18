@@ -103,6 +103,12 @@ class ReceiptTest(unittest.TestCase):
 
         self.assertIn(b"\x1ba\x01\x1bE\x01-- HISTORY --\n\x1bE\x00\x1ba\x00\x1ba\x00Title", data)
 
+    def test_cups_printer_name_uses_lpr_raw(self):
+        with patch.object(c.subprocess, "run") as run:
+            c.send_printer("EPSON_TM_m10_JPN", b"receipt")
+
+        run.assert_called_once_with(["lpr", "-P", "EPSON_TM_m10_JPN", "-o", "raw"], input=b"receipt", check=True)
+
     def test_loads_200_jsonl_quotes(self):
         self.assertEqual(len(c.quotes()), 200)
 

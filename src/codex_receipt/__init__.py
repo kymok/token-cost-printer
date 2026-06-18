@@ -228,6 +228,14 @@ def escpos(text: str, encoding: str, cut: bool, kanji: bool = True) -> bytes:
     return bytes(data)
 
 
+def send_printer(device: str, data: bytes) -> None:
+    if device.startswith("/"):
+        with open(device, "ab", buffering=0) as f:
+            f.write(data)
+        return
+    subprocess.run(["lpr", "-P", device, "-o", "raw"], input=data, check=True)
+
+
 def config(path: Path) -> dict:
     if path.expanduser().exists():
         with open(path.expanduser(), "rb") as f:
@@ -253,17 +261,17 @@ def print_cmd(args: argparse.Namespace) -> int:
         print("codex-receipt: printer device not configured; use --dry-run or set printer.device", file=sys.stderr)
         return 2
     try:
-        with open(device, "ab", buffering=0) as f:
-            f.write(
-                escpos(
-                    text,
-                    printer.get("encoding", "cp932"),
-                    bool(printer.get("cut", True)),
-                    bool(printer.get("kanji", True)),
-                )
-            )
+        send_printer(
+            device,
+            escpos(
+                text,
+                printer.get("encoding", "cp932"),
+                bool(printer.get("cut", True)),
+                bool(printer.get("kanji", True)),
+            ),
+        )
         return 0
-    except OSError as e:
+    except (OSError, subprocess.SubprocessError) as e:
         print(f"codex-receipt: printer failed: {e}", file=sys.stderr)
         return 2
 

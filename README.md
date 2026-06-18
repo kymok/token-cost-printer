@@ -50,7 +50,7 @@ codex-receipt print \
 
 ```toml
 [printer]
-device = "/dev/usb/lp0"
+device = "EPSON_TM_m10_JPN"
 encoding = "cp932"
 cut = true
 kanji = true
