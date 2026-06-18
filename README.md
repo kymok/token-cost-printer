@@ -57,13 +57,25 @@ kanji = true
 
 [receipt]
 columns = 35
+
+[cost]
+model = "gpt-5.5"
 ```
 
 `device` に CUPS プリンタ名か `/dev/usb/lp0` のようなデバイスパスを固定指定することもできます。
 
+## 実機確認用のダミー印字
+
+```sh
+scripts/print-demo-receipt.py
+scripts/print-demo-receipt.py --dry-run
+```
+
+追加の `--device`、`--model`、`--config`、`--cost-model` はそのまま `codex-receipt print` へ渡されます。
+
 ## 何を集計するか
 
-`codex-receipt` はデフォルトで `~/.codex/state_5.sqlite` を読み、指定した `--pr-branch` と一致する Codex thread を探します。各 thread の rollout JSONL から最新の `token_count` を読み、Input、Output、Reasoning、Total を合計します。
+`codex-receipt` はデフォルトで `~/.codex/state_5.sqlite` を読み、指定した `--pr-branch` と一致する Codex thread を探します。各 thread の rollout JSONL から最新の `token_count` を読み、Input、Output、Reasoning、Total を合計し、各行の右端に cost を表示します。
 
 別の state DB を使う場合は `--state-db` を指定します。
 

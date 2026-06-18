@@ -31,8 +31,8 @@ class ReceiptTest(unittest.TestCase):
             )
             db = root / "state.sqlite"
             con = sqlite3.connect(db)
-            con.execute("CREATE TABLE threads (id TEXT, git_origin_url TEXT, git_branch TEXT, cwd TEXT, tokens_used INTEGER, rollout_path TEXT, title TEXT, updated_at_ms INTEGER)")
-            con.execute("INSERT INTO threads VALUES ('t1', '', 'feature', ?, 0, ?, 'Build it', 0)", (str(root), str(rollout)))
+            con.execute("CREATE TABLE threads (id TEXT, git_origin_url TEXT, git_branch TEXT, cwd TEXT, tokens_used INTEGER, rollout_path TEXT, title TEXT, updated_at_ms INTEGER, model TEXT)")
+            con.execute("INSERT INTO threads VALUES ('t1', '', 'feature', ?, 0, ?, 'Build it', 0, 'gpt-5.4')", (str(root), str(rollout)))
             con.commit()
             con.close()
 
@@ -40,13 +40,37 @@ class ReceiptTest(unittest.TestCase):
             args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
             text = c.render(args, rows, 35)
 
-            self.assertIn("Input:     2.0K (25% cached)", text)
+            self.assertIn("Input:     2.0K (C: 25%)", text)
             self.assertIn("Output:     600", text)
             self.assertIn("Reasoning:  100", text)
             self.assertIn("Total:     2.6K", text)
+            self.assertIn("Build it\nGPT-5.4\nInput:", text)
             self.assertEqual(text.splitlines()[0], "-- PR CREATED --")
             self.assertRegex(text.splitlines()[-1], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$")
             self.assertNotIn("01/01", text)
+
+    def test_renders_cost_for_total_and_history(self):
+        args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
+        usage = c.Usage(input=1_200_000, cached=1_056_000, output=10_000, reasoning=2_000, total=1_210_000)
+        rows = [{"id": "1", "title": "One", "model": "gpt-5.4-mini", "rollout_path": None, "tokens_used": 0}]
+        rates = c.DEFAULT_COSTS["gpt-5.5"]
+
+        with patch.object(c, "latest_usage", return_value=usage):
+            text = c.render(args, rows, 35, rates)
+
+        self.assertIn("One\nGPT-5.4-Mini\nInput:", text)
+        self.assertEqual(text.count("Input:     1.2M (C: 88%)   1.25 USD"), 2)
+        self.assertEqual(text.count("Output:     10K            0.30 USD"), 2)
+
+    def test_cost_uses_cached_input_rate(self):
+        usage = c.Usage(input=2000, cached=500, output=600)
+
+        self.assertEqual(c.dollars(usage, c.DEFAULT_COSTS["gpt-5.5"]), "0.03 USD")
+
+    def test_config_cost_model_override(self):
+        cfg = {"cost": {"models": [{"name": "Custom", "input": "1", "cached_input": "0.1", "output": "2"}]}}
+
+        self.assertEqual(c.costs(cfg)["custom"]["output"], 2.0)
 
     def test_quote_has_two_blank_lines_before_it(self):
         args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
