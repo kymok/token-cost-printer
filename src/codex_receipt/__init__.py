@@ -70,8 +70,9 @@ def cost_key(s: str) -> str:
     return s.strip().casefold().replace(" ", "-")
 
 
-def display_model(s: str) -> str:
-    return DISPLAY_MODELS.get(cost_key(s), s)
+def display_model(s: str, effort: str | None = None) -> str:
+    name = DISPLAY_MODELS.get(cost_key(s), s)
+    return f"{name} (Fast)" if str(effort or "").casefold() == "high" else name
 
 
 def costs(cfg: dict) -> dict[str, dict[str, float]]:
@@ -151,9 +152,10 @@ def threads(state_db: Path, repo_root: str, branch: str) -> list[dict]:
     try:
         thread_columns = {row[1] for row in con.execute("PRAGMA table_info(threads)")}
         model_column = ", model" if "model" in thread_columns else ""
+        effort_column = ", reasoning_effort" if "reasoning_effort" in thread_columns else ""
         rows = con.execute(
             f"""
-            SELECT id, git_origin_url, git_branch, cwd, tokens_used, rollout_path, title, updated_at_ms{model_column}
+            SELECT id, git_origin_url, git_branch, cwd, tokens_used, rollout_path, title, updated_at_ms{model_column}{effort_column}
             FROM threads
             WHERE git_branch = ?
             ORDER BY updated_at_ms
@@ -267,7 +269,7 @@ def render(args: argparse.Namespace, rows: list[dict], columns: int, rates: dict
         lines.append("")
         lines += [
             clip(row["title"] or row["id"], columns),
-            *([clip(display_model(str(row["model"])), columns)] if row.get("model") else []),
+            *([clip(display_model(str(row["model"]), row.get("reasoning_effort")), columns)] if row.get("model") else []),
             *[clip(line, columns) for line in usage_lines(usage, columns, rates)],
         ]
     lines += ["", "", *quote_lines(q, columns), f"-- {source}", "", now]

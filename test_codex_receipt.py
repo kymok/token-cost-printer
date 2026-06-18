@@ -67,6 +67,9 @@ class ReceiptTest(unittest.TestCase):
 
         self.assertEqual(c.dollars(usage, c.DEFAULT_COSTS["gpt-5.5"]), "0.03 USD")
 
+    def test_display_model_shows_fast_mode(self):
+        self.assertEqual(c.display_model("gpt-5.5", "high"), "GPT-5.5 (Fast)")
+
     def test_config_cost_model_override(self):
         cfg = {"cost": {"models": [{"name": "Custom", "input": "1", "cached_input": "0.1", "output": "2"}]}}
 
