@@ -304,7 +304,8 @@ def send_printer(device: str, data: bytes) -> None:
         with open(device, "ab", buffering=0) as f:
             f.write(data)
         return
-    subprocess.run(["lpr", "-P", device, "-o", "raw"], input=data, check=True)
+    lpr = "/usr/bin/lpr" if Path("/usr/bin/lpr").exists() else "lpr"
+    subprocess.run([lpr, "-P", device, "-o", "raw"], input=data, check=True)
 
 
 def printer_key(s: str) -> str:

@@ -133,7 +133,13 @@ class ReceiptTest(unittest.TestCase):
         self.assertIn(b"\x1ba\x01\x1bE\x01-- HISTORY --\n\x1bE\x00\x1ba\x00\x1ba\x00Title", data)
 
     def test_cups_printer_name_uses_lpr_raw(self):
-        with patch.object(c.subprocess, "run") as run:
+        with patch.object(c.Path, "exists", return_value=True), patch.object(c.subprocess, "run") as run:
+            c.send_printer("EPSON_TM_m10_JPN", b"receipt")
+
+        run.assert_called_once_with(["/usr/bin/lpr", "-P", "EPSON_TM_m10_JPN", "-o", "raw"], input=b"receipt", check=True)
+
+    def test_cups_printer_name_falls_back_to_path_lpr(self):
+        with patch.object(c.Path, "exists", return_value=False), patch.object(c.subprocess, "run") as run:
             c.send_printer("EPSON_TM_m10_JPN", b"receipt")
 
         run.assert_called_once_with(["lpr", "-P", "EPSON_TM_m10_JPN", "-o", "raw"], input=b"receipt", check=True)
