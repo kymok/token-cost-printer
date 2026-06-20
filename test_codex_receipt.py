@@ -40,7 +40,7 @@ class ReceiptTest(unittest.TestCase):
             args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
             text = c.render(args, rows, 35)
 
-            self.assertIn("Input:     2.0K (C: 25%)", text)
+            self.assertIn("Input:     2.0K (C:25%)", text)
             self.assertIn("Output:     600", text)
             self.assertIn("Reasoning:  100", text)
             self.assertIn("Total:     2.6K", text)
@@ -59,7 +59,7 @@ class ReceiptTest(unittest.TestCase):
             text = c.render(args, rows, 35, rates)
 
         self.assertIn("One\nGPT-5.4-Mini\nInput:", text)
-        self.assertEqual(text.count("Input:     1.2M (C: 88%)   1.25 USD"), 2)
+        self.assertEqual(text.count("Input:     1.2M (C:88%)    1.25 USD"), 2)
         self.assertEqual(text.count("Output:     10K            0.30 USD"), 2)
 
     def test_cost_uses_cached_input_rate(self):
@@ -97,8 +97,14 @@ class ReceiptTest(unittest.TestCase):
 
         self.assertIn("Reasoning: 7.5K", lines)
 
+    def test_formatter_rejects_too_few_columns(self):
+        with self.assertRaises(ValueError):
+            c.usage_lines(c.Usage(input=1000), 34)
+        with self.assertRaises(ValueError):
+            c.quote_lines("too narrow", 34)
+
     def test_quote_lines_remove_semicolons_and_wrap_at_spaces(self):
-        lines = c.quote_lines("Keep the receipt; supercalifragilisticexpialidocious.", 20)
+        lines = c.quote_lines("Keep the receipt; supercalifragilisticexpialidocious.", 35)
 
         self.assertNotIn(";", "\n".join(lines))
         self.assertFalse(any(line.endswith("-") for line in lines))
@@ -106,9 +112,10 @@ class ReceiptTest(unittest.TestCase):
         self.assertIn("acceptable.", "\n".join(c.quote_lines("CI says possible. Review says acceptable.", 35)))
 
     def test_summary_lines_wrap_and_stop_at_eight_lines(self):
-        lines = c.summary_lines("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen", 10)
+        lines = c.summary_lines("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen", 35)
 
-        self.assertEqual(lines, ["one two", "three four", "five six", "seven", "eight nine", "ten eleven", "twelve", "thirteen"])
+        self.assertEqual(lines, ["one two three four five six seven", "eight nine ten eleven twelve", "thirteen fourteen fifteen sixteen", "seventeen"])
+        self.assertEqual(c.summary_lines("\n".join(str(i) for i in range(9)), 35), [str(i) for i in range(8)])
 
     def test_escpos_enables_shift_jis_kanji_mode(self):
         data = c.escpos("2026-06-18T12:00:00\n\n\n-- PR CREATED --\n\n\nmain ← feature\n", "cp932", False)

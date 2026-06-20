@@ -7,10 +7,23 @@ import sqlite3
 import subprocess
 import sys
 import tomllib
-import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+from .formatter import (
+    clip,
+    dollars,
+    quote_lines,
+    right,
+    summary_lines,
+    token,
+    usage_costs,
+    usage_lines,
+    usd,
+    width,
+    wrap_lines,
+)
 
 
 FALLBACK_QUOTES = [("Input is memory. Output is debt.", "Codex Marginalia")]
@@ -36,36 +49,6 @@ class Usage:
     total: int = 0
 
 
-def width(s: str) -> int:
-    return sum(2 if unicodedata.east_asian_width(c) in "FW" else 1 for c in s)
-
-
-def clip(s: str, columns: int) -> str:
-    out = ""
-    used = 0
-    for c in s:
-        w = 2 if unicodedata.east_asian_width(c) in "FW" else 1
-        if used + w > columns:
-            break
-        out += c
-        used += w
-    return out
-
-
-def right(label: str, value: str, columns: int) -> str:
-    return label + " " * max(1, columns - width(label) - width(value)) + value
-
-
-def token(n: int) -> str:
-    if n < 1000:
-        return str(n)
-    for suffix, base in (("M", 1_000_000), ("K", 1000)):
-        if n >= base:
-            v = n / base
-            return (f"{v:.1f}" if v < 10 else f"{v:.0f}") + suffix
-    return str(n)
-
-
 def cost_key(s: str) -> str:
     return s.strip().casefold().replace(" ", "-")
 
@@ -86,27 +69,6 @@ def costs(cfg: dict) -> dict[str, dict[str, float]]:
         except (KeyError, TypeError, ValueError):
             pass
     return rows
-
-
-def usd(value: float) -> str:
-    return f"{value:.2f} USD"
-
-
-def dollars(usage: Usage, rates: dict[str, float]) -> str:
-    uncached = max(usage.input - usage.cached, 0)
-    value = (uncached * rates["input"] + usage.cached * rates["cached_input"] + usage.output * rates["output"]) / 1_000_000
-    return usd(value)
-
-
-def usage_costs(usage: Usage, rates: dict[str, float]) -> dict[str, str]:
-    input_cost = (max(usage.input - usage.cached, 0) * rates["input"] + usage.cached * rates["cached_input"]) / 1_000_000
-    output_cost = usage.output * rates["output"] / 1_000_000
-    return {
-        "Input:": usd(input_cost),
-        "Output:": usd(output_cost),
-        "Reasoning:": usd(usage.reasoning * rates["output"] / 1_000_000),
-        "Total:": usd(input_cost + output_cost),
-    }
 
 
 def latest_usage(path: str | None, fallback_total: int | None) -> Usage:
@@ -184,57 +146,6 @@ def quotes() -> list[tuple[str, str]]:
         except (OSError, json.JSONDecodeError, KeyError, TypeError):
             pass
     return FALLBACK_QUOTES
-
-
-def usage_lines(usage: Usage, columns: int, rates: dict[str, float] | None = None) -> list[str]:
-    cached = round(usage.cached * 100 / usage.input) if usage.input else 0
-    cached_text = f" (C: {cached}%)"
-    values = {
-        "Input:": token(usage.input),
-        "Output:": token(usage.output),
-        "Reasoning:": token(usage.reasoning),
-        "Total:": token(usage.total),
-    }
-    value_end = max(map(width, values)) + 1 + max(width(v) for v in values.values())
-
-    def line(label: str, value: str, suffix: str = "") -> str:
-        text = label + " " * max(1, value_end - width(label) - width(value)) + value + suffix
-        if rates:
-            cost = usage_costs(usage, rates)[label]
-            if width(text) + 1 + width(cost) > columns:
-                text = clip(text, columns - width(cost) - 1)
-            return text + " " * max(1, columns - width(text) - width(cost)) + cost
-        return text
-
-    return [
-        line("Input:", values["Input:"], cached_text),
-        line("Output:", values["Output:"]),
-        line("Reasoning:", values["Reasoning:"]),
-        line("Total:", values["Total:"]),
-    ]
-
-
-def wrap_lines(text: str, columns: int) -> list[str]:
-    words = text.split()
-    lines = []
-    line = ""
-    for word in words:
-        candidate = f"{line} {word}" if line else word
-        if width(candidate) <= columns:
-            line = candidate
-        else:
-            if line:
-                lines.append(line)
-            line = word
-    return lines + ([line] if line else [])
-
-
-def quote_lines(quote: str, columns: int) -> list[str]:
-    return wrap_lines(quote.replace(";", ""), columns)
-
-
-def summary_lines(summary: str, columns: int) -> list[str]:
-    return [line for paragraph in summary.splitlines() for line in wrap_lines(paragraph, columns)][:8]
 
 
 def render(args: argparse.Namespace, rows: list[dict], columns: int, rates: dict[str, float] | None = None) -> str:
