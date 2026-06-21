@@ -57,11 +57,11 @@ token-receipt print \
 または `~/.config/token-receipt/config.toml` に設定します。
 
 ```sh
-token-receipt setup
-token-receipt setup EPSON_TM
+token-receipt printer
+token-receipt printer set EPSON_TM
 ```
 
-`setup` は空なら CUPS デバイス一覧を表示します。引数ありなら CUPS の有効プリンタ名を先頭一致で探し、1件だけ一致した名前を `printer.device` に保存します。
+`printer` は CUPS デバイス名とアドレスを表示し、現在の `printer.device` には `*` を付けます。`printer set` は CUPS の有効プリンタ名を先頭一致で探し、1件だけ一致した名前を `printer.device` に保存します。
 
 ```toml
 [printer]

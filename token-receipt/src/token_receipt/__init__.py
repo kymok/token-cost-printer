@@ -211,7 +211,7 @@ def find_printer_by_name_prefix(prefix: str) -> str:
     raise RuntimeError(f"multiple CUPS printer names start with {prefix!r}: {', '.join(matches)}")
 
 
-def find_setup_printer(prefix: str, model: str) -> str:
+def find_printer_for_setting(prefix: str, model: str) -> str:
     if prefix:
         return find_printer_by_name_prefix(prefix)
     return find_printer(model)
@@ -219,6 +219,28 @@ def find_setup_printer(prefix: str, model: str) -> str:
 
 def list_cups_devices() -> str:
     return subprocess.check_output(["lpstat", "-v"], text=True)
+
+
+def cups_device_rows(text: str) -> list[tuple[str, str]]:
+    rows = []
+    for line in text.splitlines():
+        prefix = "device for "
+        if line.startswith(prefix) and ": " in line:
+            name, address = line[len(prefix) :].split(": ", 1)
+            rows.append((name, address))
+    return rows
+
+
+def format_cups_devices(text: str, current: str) -> str:
+    lines = []
+    found = False
+    for name, address in cups_device_rows(text):
+        marker = "*" if name == current else " "
+        found = found or marker == "*"
+        lines.append(f"{marker} {name}: {address}")
+    if not found:
+        lines.append("No printer configured.")
+    return "\n".join(lines) + "\n"
 
 
 def printer_profile(device: str) -> dict:
@@ -358,18 +380,24 @@ def mock_cmd(args: argparse.Namespace) -> int:
     return output_cmd(args, cfg, text, device)
 
 
-def setup_cmd(args: argparse.Namespace) -> int:
+def printer_cmd(args: argparse.Namespace) -> int:
+    try:
+        current = config(Path(args.config)).get("printer", {}).get("device", "")
+        print(format_cups_devices(list_cups_devices(), current), end="")
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"{PROG}: {e}", file=sys.stderr)
+        return 2
+    return 0
+
+
+def printer_set_cmd(args: argparse.Namespace) -> int:
     prefix = args.device_prefix or ""
     model = args.model or ""
     if not prefix and not model:
-        try:
-            print(list_cups_devices(), end="")
-        except (OSError, subprocess.SubprocessError) as e:
-            print(f"{PROG}: {e}", file=sys.stderr)
-            return 2
-        return 0
+        print(f"{PROG}: printer set requires DEVICE_PREFIX or --model", file=sys.stderr)
+        return 2
     try:
-        device = find_setup_printer(prefix, model)
+        device = find_printer_for_setting(prefix, model)
         set_printer_device(Path(args.config), device)
     except (OSError, RuntimeError) as e:
         print(f"{PROG}: {e}", file=sys.stderr)
@@ -406,11 +434,15 @@ def parser() -> argparse.ArgumentParser:
     mock = sub.add_parser("mock")
     add_output_args(mock)
     mock.set_defaults(func=mock_cmd)
-    setup = sub.add_parser("setup")
-    setup.add_argument("device_prefix", nargs="?")
-    setup.add_argument("--config", default="~/.config/token-receipt/config.toml")
-    setup.add_argument("--model")
-    setup.set_defaults(func=setup_cmd)
+    printer = sub.add_parser("printer")
+    printer.add_argument("--config", default="~/.config/token-receipt/config.toml")
+    printer.set_defaults(func=printer_cmd)
+    printer_sub = printer.add_subparsers(dest="printer_cmd")
+    printer_set = printer_sub.add_parser("set")
+    printer_set.add_argument("device_prefix", nargs="?")
+    printer_set.add_argument("--config", default="~/.config/token-receipt/config.toml")
+    printer_set.add_argument("--model")
+    printer_set.set_defaults(func=printer_set_cmd)
     return p
 
 

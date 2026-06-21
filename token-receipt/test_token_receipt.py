@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -234,7 +234,7 @@ class ReceiptTest(unittest.TestCase):
         with patch.object(c.subprocess, "check_output", side_effect=output):
             self.assertEqual(c.find_printer("EPSON TM-m10"), "TM_m10_New")
 
-    def test_setup_writes_cups_printer_name_by_prefix(self):
+    def test_printer_set_writes_cups_printer_name_by_prefix(self):
         def output(cmd, **_kwargs):
             if cmd == ["lpstat", "-e"]:
                 return "TM_m10_New\nOffice_Laser\n"
@@ -249,25 +249,42 @@ class ReceiptTest(unittest.TestCase):
             path.write_text('[printer]\nmodel = "EPSON TM-m10"\ndevice = ""\nencoding = "cp932"\n\n[receipt]\ncolumns = 42\n', encoding="utf-8")
 
             with redirect_stdout(io.StringIO()):
-                code = c.main(["setup", "TM_m10", "--config", str(path)])
+                code = c.main(["printer", "set", "TM_m10", "--config", str(path)])
 
             self.assertEqual(code, 0)
             self.assertEqual(c.config(path)["printer"]["device"], "TM_m10_New")
             self.assertIn('encoding = "cp932"\n\n[receipt]', path.read_text(encoding="utf-8"))
 
-    def test_setup_without_args_lists_cups_devices(self):
+    def test_printer_set_requires_prefix_or_model(self):
+        with redirect_stderr(io.StringIO()):
+            self.assertEqual(c.main(["printer", "set"]), 2)
+
+    def test_printer_without_args_lists_cups_devices(self):
         with tempfile.TemporaryDirectory() as d, patch.object(c.subprocess, "check_output", return_value="device for TM_m10_New: usb://EPSON/TM-m10\n") as check_output:
             path = Path(d) / "config.toml"
             path.write_text('[printer]\nmodel = "EPSON TM-m10"\ndevice = ""\n', encoding="utf-8")
             out = io.StringIO()
 
             with redirect_stdout(out):
-                code = c.main(["setup", "--config", str(path)])
+                code = c.main(["printer", "--config", str(path)])
 
             self.assertEqual(code, 0)
-            self.assertEqual(out.getvalue(), "device for TM_m10_New: usb://EPSON/TM-m10\n")
+            self.assertEqual(out.getvalue(), "  TM_m10_New: usb://EPSON/TM-m10\nNo printer configured.\n")
             self.assertEqual(c.config(path)["printer"]["device"], "")
             check_output.assert_called_once_with(["lpstat", "-v"], text=True)
+
+    def test_printer_marks_configured_cups_device(self):
+        output = "device for Brother_ADS_4300N: mdns://brother\n" "device for EPSON_TM_m10_JPN: usb://epson\n"
+        with tempfile.TemporaryDirectory() as d, patch.object(c.subprocess, "check_output", return_value=output):
+            path = Path(d) / "config.toml"
+            path.write_text('[printer]\ndevice = "EPSON_TM_m10_JPN"\n', encoding="utf-8")
+            out = io.StringIO()
+
+            with redirect_stdout(out):
+                code = c.main(["printer", "--config", str(path)])
+
+            self.assertEqual(code, 0)
+            self.assertEqual(out.getvalue(), "  Brother_ADS_4300N: mdns://brother\n* EPSON_TM_m10_JPN: usb://epson\n")
 
     def test_loads_200_jsonl_quotes(self):
         self.assertEqual(len(c.quotes()), 200)
