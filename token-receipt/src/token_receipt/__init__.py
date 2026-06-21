@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 import subprocess
 import sys
 import tomllib
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -27,6 +29,9 @@ DISPLAY_MODELS = {
     "gpt-5.4": "GPT-5.4",
     "gpt-5.4-mini": "GPT-5.4-Mini",
 }
+PRINTER_PROFILES = [
+    (re.compile(r"tm[-_ ]?m10", re.I), {"columns": 42, "font": b"\x1bM\x01"}),
+]
 PROG = "token-receipt"
 
 
@@ -74,6 +79,22 @@ def row_usage(row: dict) -> Usage:
     return codex.latest_usage(row["rollout_path"], row["tokens_used"])
 
 
+def clip_columns(text: str, columns: int) -> str:
+    out = ""
+    used = 0
+    for c in text:
+        w = 2 if unicodedata.east_asian_width(c) in "FW" else 1
+        if used + w > columns:
+            break
+        out += c
+        used += w
+    return out
+
+
+def history_title(row: dict, columns: int) -> str:
+    return clip_columns((str(row.get("title") or row["id"]).splitlines() or [""])[0], columns)
+
+
 def render(
     args: argparse.Namespace,
     rows: list[dict],
@@ -109,7 +130,7 @@ def render(
     for row, usage in usages:
         lines.append("")
         lines += [
-            *text_lines(row["title"] or row["id"], columns),
+            history_title(row, columns),
             *([] if not row.get("model") else text_lines(display_model(str(row["model"])), columns)),
             *usage_lines(usage, columns, rates),
         ]
@@ -117,11 +138,12 @@ def render(
     return "\n".join(lines) + "\n"
 
 
-def escpos(text: str, encoding: str, cut: bool, kanji: bool = True) -> bytes:
+def escpos(text: str, encoding: str, cut: bool, kanji: bool = True, font: bytes = b"") -> bytes:
     # ponytail: enough ESC/POS for text receipts; add printer-specific modes when hardware proves it needs them.
     data = bytearray(b"\x1b@")
     if kanji:
         data.extend(b"\x1cC\x01\x1c&")
+    data.extend(font)
     for line in text.splitlines(keepends=True):
         if line.strip() in ("-- PR CREATED --", "-- HISTORY --"):
             data.extend(b"\x1ba\x01\x1bE\x01")
@@ -144,9 +166,7 @@ def escpos(text: str, encoding: str, cut: bool, kanji: bool = True) -> bytes:
 
 def send_printer(device: str, data: bytes) -> None:
     if device.startswith("/"):
-        with open(device, "ab", buffering=0) as f:
-            f.write(data)
-        return
+        raise ValueError("printer.device must be a CUPS printer name")
     lpr = "/usr/bin/lpr" if Path("/usr/bin/lpr").exists() else "lpr"
     subprocess.run([lpr, "-P", device, "-o", "raw"], input=data, check=True)
 
@@ -199,6 +219,54 @@ def find_printer(model: str) -> str:
     raise RuntimeError(f"multiple CUPS printers match printer.model={model!r}: {', '.join(matches)}")
 
 
+def find_printer_by_name_prefix(prefix: str) -> str:
+    matches = [name for name in cups_printers() if name.casefold().startswith(prefix.casefold())]
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        raise RuntimeError(f"no CUPS printer name starts with {prefix!r}")
+    raise RuntimeError(f"multiple CUPS printer names start with {prefix!r}: {', '.join(matches)}")
+
+
+def find_printer_for_setting(prefix: str, model: str) -> str:
+    if prefix:
+        return find_printer_by_name_prefix(prefix)
+    return find_printer(model)
+
+
+def list_cups_devices() -> str:
+    return subprocess.check_output(["lpstat", "-v"], text=True)
+
+
+def cups_device_rows(text: str) -> list[tuple[str, str]]:
+    rows = []
+    for line in text.splitlines():
+        prefix = "device for "
+        if line.startswith(prefix) and ": " in line:
+            name, address = line[len(prefix) :].split(": ", 1)
+            rows.append((name, address))
+    return rows
+
+
+def format_cups_devices(text: str, current: str) -> str:
+    lines = []
+    found = False
+    for name, address in cups_device_rows(text):
+        marker = "*" if name == current else " "
+        found = found or marker == "*"
+        lines.append(f"{marker} {name}: {address}")
+    if not found:
+        lines.append("No printer configured.")
+    return "\n".join(lines) + "\n"
+
+
+def printer_profile(device: str) -> dict:
+    for pattern, profile in PRINTER_PROFILES:
+        if pattern.search(device):
+            return profile
+    return {}
+
+
 def config(path: Path) -> dict:
     if path.expanduser().exists():
         with open(path.expanduser(), "rb") as f:
@@ -206,34 +274,83 @@ def config(path: Path) -> dict:
     return {}
 
 
-def receipt_settings(args: argparse.Namespace) -> tuple[dict, int, dict[str, float]] | int:
-    cfg = config(Path(args.config))
+def toml_string(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def section_name(line: str) -> str | None:
+    s = line.split("#", 1)[0].strip()
+    if s.startswith("[") and s.endswith("]") and not s.startswith("[["):
+        return s[1:-1].strip()
+    return None
+
+
+def set_printer_device(path: Path, device: str) -> None:
+    path = path.expanduser()
+    line = f"device = {toml_string(device)}"
+    if path.exists():
+        lines = path.read_text(encoding="utf-8").splitlines()
+    else:
+        lines = []
+    out = []
+    in_printer = found = wrote = False
+    for old in lines:
+        section = section_name(old)
+        if section is not None:
+            if in_printer and not wrote:
+                out.append(line)
+                wrote = True
+            in_printer = section == "printer"
+            found = found or in_printer
+        if in_printer and old.split("#", 1)[0].split("=", 1)[0].strip() == "device":
+            out.append(line)
+            wrote = True
+            continue
+        out.append(old)
+    if found and not wrote:
+        out.append(line)
+    if not found:
+        if out and out[-1].strip():
+            out.append("")
+        out.extend(["[printer]", line])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
+def output_device(args: argparse.Namespace, cfg: dict) -> str:
+    printer = cfg.get("printer", {})
+    device = args.device or printer.get("device") or ""
+    if not device and not args.dry_run and (args.model or printer.get("model")):
+        device = find_printer(args.model or printer["model"])
+    return device
+
+
+def receipt_columns(args: argparse.Namespace, cfg: dict, device: str) -> int:
     receipt = cfg.get("receipt", {})
-    columns = int(args.columns or receipt.get("columns") or 35)
+    profile = printer_profile(device)
+    return int(args.columns or profile.get("columns") or receipt.get("columns") or 35)
+
+
+def receipt_settings(args: argparse.Namespace) -> tuple[dict, dict[str, float]] | int:
+    cfg = config(Path(args.config))
     cost_model = cost_key(args.cost_model or cfg.get("cost", {}).get("model") or DEFAULT_COST_MODEL)
     rates = costs(cfg).get(cost_model)
     if not rates:
         print(f"{PROG}: unknown cost model {cost_model!r}", file=sys.stderr)
         return 2
-    return cfg, columns, rates
+    return cfg, rates
 
 
-def output_cmd(args: argparse.Namespace, cfg: dict, text: str) -> int:
+def output_cmd(args: argparse.Namespace, cfg: dict, text: str, device: str) -> int:
     printer = cfg.get("printer", {})
     try:
         if args.dry_run:
             print(text, end="")
             return 0
-        device = args.device or printer.get("device") or ""
-        if not device and (args.model or printer.get("model")):
-            try:
-                device = find_printer(args.model or printer["model"])
-            except RuntimeError as e:
-                print(f"{PROG}: {e}", file=sys.stderr)
-                return 2
         if not device:
             print(f"{PROG}: printer device not configured; use --dry-run or set printer.device/model", file=sys.stderr)
             return 2
+        profile = printer_profile(device)
         send_printer(
             device,
             escpos(
@@ -241,10 +358,11 @@ def output_cmd(args: argparse.Namespace, cfg: dict, text: str) -> int:
                 printer.get("encoding", "cp932"),
                 bool(printer.get("cut", True)),
                 bool(printer.get("kanji", True)),
+                profile.get("font", b""),
             ),
         )
         return 0
-    except (OSError, subprocess.SubprocessError) as e:
+    except (OSError, subprocess.SubprocessError, ValueError) as e:
         print(f"{PROG}: printer failed: {e}", file=sys.stderr)
         return 2
 
@@ -253,22 +371,56 @@ def print_cmd(args: argparse.Namespace) -> int:
     settings = receipt_settings(args)
     if isinstance(settings, int):
         return settings
-    cfg, columns, rates = settings
+    cfg, rates = settings
     try:
+        device = output_device(args, cfg)
+        columns = receipt_columns(args, cfg, device)
         text = render(args, codex.threads(Path(args.state_db).expanduser(), args.repo_root, args.pr_branch), columns, rates)
-    except OSError as e:
+    except (OSError, RuntimeError) as e:
         print(f"{PROG}: {e}", file=sys.stderr)
         return 2
-    return output_cmd(args, cfg, text)
+    return output_cmd(args, cfg, text, device)
 
 
 def mock_cmd(args: argparse.Namespace) -> int:
     settings = receipt_settings(args)
     if isinstance(settings, int):
         return settings
-    cfg, columns, rates = settings
+    cfg, rates = settings
+    try:
+        device = output_device(args, cfg)
+    except RuntimeError as e:
+        print(f"{PROG}: {e}", file=sys.stderr)
+        return 2
+    columns = receipt_columns(args, cfg, device)
     text = render(mock_data.args(), mock_data.rows(), columns, rates, mock_data.QUOTE)
-    return output_cmd(args, cfg, text)
+    return output_cmd(args, cfg, text, device)
+
+
+def printer_cmd(args: argparse.Namespace) -> int:
+    try:
+        current = config(Path(args.config)).get("printer", {}).get("device", "")
+        print(format_cups_devices(list_cups_devices(), current), end="")
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"{PROG}: {e}", file=sys.stderr)
+        return 2
+    return 0
+
+
+def printer_set_cmd(args: argparse.Namespace) -> int:
+    prefix = args.device_prefix or ""
+    model = args.model or ""
+    if not prefix and not model:
+        print(f"{PROG}: printer set requires DEVICE_PREFIX or --model", file=sys.stderr)
+        return 2
+    try:
+        device = find_printer_for_setting(prefix, model)
+        set_printer_device(Path(args.config), device)
+    except (OSError, RuntimeError) as e:
+        print(f"{PROG}: {e}", file=sys.stderr)
+        return 2
+    print(f"{PROG}: set printer.device={device!r} in {Path(args.config).expanduser()}")
+    return 0
 
 
 def add_output_args(p: argparse.ArgumentParser) -> None:
@@ -299,6 +451,15 @@ def parser() -> argparse.ArgumentParser:
     mock = sub.add_parser("mock")
     add_output_args(mock)
     mock.set_defaults(func=mock_cmd)
+    printer = sub.add_parser("printer")
+    printer.add_argument("--config", default="~/.config/token-receipt/config.toml")
+    printer.set_defaults(func=printer_cmd)
+    printer_sub = printer.add_subparsers(dest="printer_cmd")
+    printer_set = printer_sub.add_parser("set")
+    printer_set.add_argument("device_prefix", nargs="?")
+    printer_set.add_argument("--config", default="~/.config/token-receipt/config.toml")
+    printer_set.add_argument("--model")
+    printer_set.set_defaults(func=printer_set_cmd)
     return p
 
 

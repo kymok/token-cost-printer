@@ -39,7 +39,7 @@ token-receipt print \
 
 ## 印字する
 
-プリンタデバイスを直接指定できます。
+プリンタを直接指定できます。
 
 ```sh
 token-receipt print \
@@ -51,10 +51,17 @@ token-receipt print \
   --additions 42 \
   --deletions 7 \
   --summary "Prints Codex token usage for this PR." \
-  --device /dev/usb/lp0
+  --device EPSON_TM_m10_JPN
 ```
 
 または `~/.config/token-receipt/config.toml` に設定します。
+
+```sh
+token-receipt printer
+token-receipt printer set EPSON_TM
+```
+
+`printer` は CUPS デバイス名とアドレスを表示し、現在の `printer.device` には `*` を付けます。`printer set` は CUPS の有効プリンタ名を先頭一致で探し、1件だけ一致した名前を `printer.device` に保存します。
 
 ```toml
 [printer]
@@ -64,13 +71,14 @@ cut = true
 kanji = true
 
 [receipt]
-columns = 35
+columns = 42
 
 [cost]
 model = "gpt-5.5"
 ```
 
-`device` に CUPS プリンタ名か `/dev/usb/lp0` のようなデバイスパスを固定指定することもできます。
+`device` には CUPS プリンタ名を指定します。
+TM-m10 は CUPS 名の一致で Font B、42桁（漢字21桁）になります。
 
 ## 実機確認用のダミー印字
 

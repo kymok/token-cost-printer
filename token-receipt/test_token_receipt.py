@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -96,6 +96,20 @@ class ReceiptTest(unittest.TestCase):
 
         self.assertIn("Total:     1\n\nTwo\nInput:", text)
 
+    def test_history_uses_title_first_line_only_and_clips_to_columns(self):
+        args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
+        rows = [{"id": "1", "title": "12345678901234567890123456789012345TRAIL\nhide this body", "model": "gpt-5.4-mini", "rollout_path": None, "tokens_used": 1}]
+
+        with patch.object(c.random, "choice", return_value=("Quote", "Source")):
+            text = c.render(args, rows, 35)
+
+        self.assertIn("12345678901234567890123456789012345\nGPT-5.4-Mini\nInput:", text)
+        self.assertNotIn("TRAIL", text)
+        self.assertNotIn("hide this body", text)
+
+    def test_history_title_clips_wide_characters(self):
+        self.assertEqual(c.history_title({"id": "1", "title": "漢" * 22}, 42), "漢" * 21)
+
     def test_usage_lines_keep_one_space_after_reasoning_for_four_digits(self):
         lines = c.usage_lines(c.Usage(input=1000, output=5300, reasoning=7500, total=2300), 35)
 
@@ -164,6 +178,20 @@ class ReceiptTest(unittest.TestCase):
         self.assertIn("←".encode("cp932"), data)
         self.assertIn(b"\x1ba\x01\x1bE\x01-- PR CREATED --\n\x1bE\x00\x1ba\x00", data)
 
+    def test_tm_m10_profile_uses_font_b_and_42_columns(self):
+        args = argparse.Namespace(columns=None)
+        cfg = {"receipt": {"columns": 35}}
+
+        profile = c.printer_profile("TM_m10_New")
+
+        self.assertEqual(c.receipt_columns(args, cfg, "TM_m10_New"), 42)
+        self.assertEqual(profile["font"], b"\x1bM\x01")
+
+    def test_escpos_applies_profile_font_code(self):
+        data = c.escpos("body\n", "cp932", False, font=c.printer_profile("tm-m10")["font"])
+
+        self.assertTrue(data.startswith(b"\x1b@\x1cC\x01\x1c&\x1bM\x01"))
+
     def test_escpos_feeds_before_cut(self):
         data = c.escpos("-- PR CREATED --\n\nbody\n", "cp932", True)
 
@@ -191,6 +219,22 @@ class ReceiptTest(unittest.TestCase):
 
         run.assert_called_once_with(["lpr", "-P", "EPSON_TM_m10_JPN", "-o", "raw"], input=b"receipt", check=True)
 
+    def test_output_uses_profile_font_for_matching_cups_name(self):
+        args = argparse.Namespace(dry_run=False)
+        cfg = {"printer": {"encoding": "cp932", "cut": False, "kanji": True}}
+
+        with patch.object(c.Path, "exists", return_value=False), patch.object(c.subprocess, "run") as run:
+            code = c.output_cmd(args, cfg, "body\n", "TM_m10_New")
+
+        self.assertEqual(code, 0)
+        self.assertTrue(run.call_args.kwargs["input"].startswith(b"\x1b@\x1cC\x01\x1c&\x1bM\x01"))
+
+    def test_rejects_device_path_printing(self):
+        with patch.object(c.subprocess, "run") as run, self.assertRaises(ValueError):
+            c.send_printer("/dev/usb/lp0", b"receipt")
+
+        run.assert_not_called()
+
     def test_finds_enabled_cups_printer_by_model(self):
         def output(cmd, **_kwargs):
             if cmd == ["lpstat", "-e"]:
@@ -203,6 +247,58 @@ class ReceiptTest(unittest.TestCase):
 
         with patch.object(c.subprocess, "check_output", side_effect=output):
             self.assertEqual(c.find_printer("EPSON TM-m10"), "TM_m10_New")
+
+    def test_printer_set_writes_cups_printer_name_by_prefix(self):
+        def output(cmd, **_kwargs):
+            if cmd == ["lpstat", "-e"]:
+                return "TM_m10_New\nOffice_Laser\n"
+            if cmd == ["lpstat", "-v"]:
+                return "device for TM_m10_New: usb://EPSON/TM-m10?serial=NEW\n"
+            if cmd == ["lpstat", "-l", "-p"]:
+                return "printer TM_m10_New is idle. enabled since today\n"
+            raise AssertionError(cmd)
+
+        with tempfile.TemporaryDirectory() as d, patch.object(c.subprocess, "check_output", side_effect=output):
+            path = Path(d) / "config.toml"
+            path.write_text('[printer]\nmodel = "EPSON TM-m10"\ndevice = ""\nencoding = "cp932"\n\n[receipt]\ncolumns = 42\n', encoding="utf-8")
+
+            with redirect_stdout(io.StringIO()):
+                code = c.main(["printer", "set", "TM_m10", "--config", str(path)])
+
+            self.assertEqual(code, 0)
+            self.assertEqual(c.config(path)["printer"]["device"], "TM_m10_New")
+            self.assertIn('encoding = "cp932"\n\n[receipt]', path.read_text(encoding="utf-8"))
+
+    def test_printer_set_requires_prefix_or_model(self):
+        with redirect_stderr(io.StringIO()):
+            self.assertEqual(c.main(["printer", "set"]), 2)
+
+    def test_printer_without_args_lists_cups_devices(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(c.subprocess, "check_output", return_value="device for TM_m10_New: usb://EPSON/TM-m10\n") as check_output:
+            path = Path(d) / "config.toml"
+            path.write_text('[printer]\nmodel = "EPSON TM-m10"\ndevice = ""\n', encoding="utf-8")
+            out = io.StringIO()
+
+            with redirect_stdout(out):
+                code = c.main(["printer", "--config", str(path)])
+
+            self.assertEqual(code, 0)
+            self.assertEqual(out.getvalue(), "  TM_m10_New: usb://EPSON/TM-m10\nNo printer configured.\n")
+            self.assertEqual(c.config(path)["printer"]["device"], "")
+            check_output.assert_called_once_with(["lpstat", "-v"], text=True)
+
+    def test_printer_marks_configured_cups_device(self):
+        output = "device for Brother_ADS_4300N: mdns://brother\n" "device for EPSON_TM_m10_JPN: usb://epson\n"
+        with tempfile.TemporaryDirectory() as d, patch.object(c.subprocess, "check_output", return_value=output):
+            path = Path(d) / "config.toml"
+            path.write_text('[printer]\ndevice = "EPSON_TM_m10_JPN"\n', encoding="utf-8")
+            out = io.StringIO()
+
+            with redirect_stdout(out):
+                code = c.main(["printer", "--config", str(path)])
+
+            self.assertEqual(code, 0)
+            self.assertEqual(out.getvalue(), "  Brother_ADS_4300N: mdns://brother\n* EPSON_TM_m10_JPN: usb://epson\n")
 
     def test_loads_200_jsonl_quotes(self):
         self.assertEqual(len(c.quotes()), 200)

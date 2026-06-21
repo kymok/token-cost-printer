@@ -19,7 +19,7 @@
 | Codex SQLite が読めない | 印字しない |
 | rollout JSONL が読めない | `threads.tokens_used` を total fallback として扱う |
 | Git repo でない | repo 名を `unknown` として扱う |
-| USB printer が見つからない | 印字しない |
+| CUPS printer が見つからない | 印字しない |
 | プリンタ失敗 | stderr に記録する |
 
 ---
