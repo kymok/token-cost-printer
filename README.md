@@ -1,4 +1,4 @@
-# token-cost-printer
+# token-receipt
 
 Codex のローカル状態から、PR ブランチに紐づく thread の token usage を集計し、レシート形式で表示または ESC/POS 互換プリンタへ印字する CLI です。
 
@@ -7,15 +7,21 @@ Codex のローカル状態から、PR ブランチに紐づく thread の token
 Python 3.11 以上が必要です。
 
 ```sh
-python3 -m pip install -e .
+python3 -m pip install -e token-receipt
 ```
 
-インストール後、`codex-receipt` コマンドが使えます。
+インストール後、`token-receipt` コマンドが使えます。
+
+アンインストールも同じ名前です。
+
+```sh
+python3 -m pip uninstall token-receipt
+```
 
 ## まず表示だけ試す
 
 ```sh
-codex-receipt print \
+token-receipt print \
   --repo-root /path/to/repo \
   --pr-number 123 \
   --pr-title "Add receipt printer" \
@@ -34,7 +40,7 @@ codex-receipt print \
 プリンタデバイスを直接指定できます。
 
 ```sh
-codex-receipt print \
+token-receipt print \
   --repo-root /path/to/repo \
   --pr-number 123 \
   --pr-title "Add receipt printer" \
@@ -46,7 +52,7 @@ codex-receipt print \
   --device /dev/usb/lp0
 ```
 
-または `~/.config/codex-receipt/config.toml` に設定します。
+または `~/.config/token-receipt/config.toml` に設定します。
 
 ```toml
 [printer]
@@ -67,20 +73,21 @@ model = "gpt-5.5"
 ## 実機確認用のダミー印字
 
 ```sh
-scripts/print-demo-receipt.py
-scripts/print-demo-receipt.py --dry-run
+token-receipt mock --dry-run
+token-receipt mock
+token-receipt/scripts/print-demo-receipt.py
 ```
 
-追加の `--device`、`--model`、`--config`、`--cost-model` はそのまま `codex-receipt print` へ渡されます。
+追加の `--device`、`--model`、`--config`、`--cost-model` は `mock` でも使えます。
 
 ## 何を集計するか
 
-`codex-receipt` はデフォルトで `~/.codex/state_5.sqlite` を読み、指定した `--pr-branch` と一致する Codex thread を探します。各 thread の rollout JSONL から最新の `token_count` を読み、Input、Output、Reasoning、Total を合計し、各行の右端に cost を表示します。
+`token-receipt` はデフォルトで `~/.codex/state_5.sqlite` を読み、指定した `--pr-branch` と一致する Codex thread を探します。各 thread の rollout JSONL から最新の `token_count` を読み、Input、Output、Reasoning、Total を合計し、各行の右端に cost を表示します。
 
 別の state DB を使う場合は `--state-db` を指定します。
 
 ```sh
-codex-receipt print ... --state-db /path/to/state.sqlite --dry-run
+token-receipt print ... --state-db /path/to/state.sqlite --dry-run
 ```
 
 ## 詳細

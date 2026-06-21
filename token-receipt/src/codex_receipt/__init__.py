@@ -3,27 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 import random
-import sqlite3
 import subprocess
 import sys
 import tomllib
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from .formatter import (
-    clip,
-    dollars,
-    quote_lines,
-    right,
-    summary_lines,
-    token,
-    usage_costs,
-    usage_lines,
-    usd,
-    width,
-    wrap_lines,
-)
+from . import codex
+from . import mock as mock_data
+from .formatter import dollars, text_lines, token, usage_lines
+from .models import Usage
 
 
 FALLBACK_QUOTES = [("Input is memory. Output is debt.", "Codex Marginalia")]
@@ -38,15 +27,7 @@ DISPLAY_MODELS = {
     "gpt-5.4": "GPT-5.4",
     "gpt-5.4-mini": "GPT-5.4-Mini",
 }
-
-
-@dataclass
-class Usage:
-    input: int = 0
-    cached: int = 0
-    output: int = 0
-    reasoning: int = 0
-    total: int = 0
+PROG = "token-receipt"
 
 
 def cost_key(s: str) -> str:
@@ -71,67 +52,6 @@ def costs(cfg: dict) -> dict[str, dict[str, float]]:
     return rows
 
 
-def latest_usage(path: str | None, fallback_total: int | None) -> Usage:
-    if path:
-        try:
-            latest = None
-            with open(Path(path).expanduser(), encoding="utf-8") as f:
-                for line in f:
-                    row = json.loads(line)
-                    payload = row.get("payload", {})
-                    if row.get("type") == "event_msg" and payload.get("type") == "token_count":
-                        latest = payload.get("info", {}).get("total_token_usage", {})
-            if latest:
-                return Usage(
-                    int(latest.get("input_tokens") or 0),
-                    int(latest.get("cached_input_tokens") or 0),
-                    int(latest.get("output_tokens") or 0),
-                    int(latest.get("reasoning_output_tokens") or 0),
-                    int(latest.get("total_tokens") or 0),
-                )
-        except (OSError, json.JSONDecodeError, TypeError, ValueError):
-            pass
-    return Usage(total=int(fallback_total or 0))
-
-
-def git_origin(repo_root: str) -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "-C", repo_root, "config", "--get", "remote.origin.url"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except subprocess.SubprocessError:
-        return ""
-
-
-def threads(state_db: Path, repo_root: str, branch: str) -> list[dict]:
-    origin = git_origin(repo_root)
-    root = str(Path(repo_root).resolve())
-    con = sqlite3.connect(state_db.expanduser())
-    con.row_factory = sqlite3.Row
-    try:
-        thread_columns = {row[1] for row in con.execute("PRAGMA table_info(threads)")}
-        model_column = ", model" if "model" in thread_columns else ""
-        rows = con.execute(
-            f"""
-            SELECT id, git_origin_url, git_branch, cwd, tokens_used, rollout_path, title, updated_at_ms{model_column}
-            FROM threads
-            WHERE git_branch = ?
-            ORDER BY updated_at_ms
-            """,
-            (branch,),
-        ).fetchall()
-    finally:
-        con.close()
-    return [
-        dict(r)
-        for r in rows
-        if (origin and r["git_origin_url"] == origin)
-        or (not origin and r["cwd"] and str(Path(r["cwd"]).resolve()).startswith(root))
-    ]
-
-
 def quotes() -> list[tuple[str, str]]:
     for path in (Path(__file__).with_name("quotes.jsonl"), Path("quotes.jsonl")):
         try:
@@ -148,8 +68,20 @@ def quotes() -> list[tuple[str, str]]:
     return FALLBACK_QUOTES
 
 
-def render(args: argparse.Namespace, rows: list[dict], columns: int, rates: dict[str, float] | None = None) -> str:
-    usages = [(row, latest_usage(row["rollout_path"], row["tokens_used"])) for row in rows]
+def row_usage(row: dict) -> Usage:
+    if "usage" in row:
+        return Usage(**row["usage"])
+    return codex.latest_usage(row["rollout_path"], row["tokens_used"])
+
+
+def render(
+    args: argparse.Namespace,
+    rows: list[dict],
+    columns: int,
+    rates: dict[str, float] | None = None,
+    quote: tuple[str, str] | None = None,
+) -> str:
+    usages = [(row, row_usage(row)) for row in rows]
     total = Usage(
         sum(u.input for _, u in usages),
         sum(u.cached for _, u in usages),
@@ -157,19 +89,19 @@ def render(args: argparse.Namespace, rows: list[dict], columns: int, rates: dict
         sum(u.reasoning for _, u in usages),
         sum(u.total for _, u in usages),
     )
-    q, source = random.choice(quotes())
+    q, source = quote or random.choice(quotes())
     now = datetime.now().isoformat(timespec="seconds")
     lines = [
         "-- PR CREATED --",
         "",
         f"PR #{args.pr_number}",
-        clip(args.pr_title, columns),
-        clip(f"{args.target_branch} ← {args.pr_branch}", columns),
+        *text_lines(args.pr_title, columns),
+        *text_lines(f"{args.target_branch} ← {args.pr_branch}", columns),
         f"(+{args.additions} -{args.deletions})",
         "",
-        *summary_lines(args.summary, columns),
+        *text_lines(args.summary, columns)[:8],
         "",
-        *[clip(line, columns) for line in usage_lines(total, columns, rates)],
+        *usage_lines(total, columns, rates),
         "",
         "",
         "-- HISTORY --",
@@ -177,11 +109,11 @@ def render(args: argparse.Namespace, rows: list[dict], columns: int, rates: dict
     for row, usage in usages:
         lines.append("")
         lines += [
-            clip(row["title"] or row["id"], columns),
-            *([clip(display_model(str(row["model"])), columns)] if row.get("model") else []),
-            *[clip(line, columns) for line in usage_lines(usage, columns, rates)],
+            *text_lines(row["title"] or row["id"], columns),
+            *([] if not row.get("model") else text_lines(display_model(str(row["model"])), columns)),
+            *usage_lines(usage, columns, rates),
         ]
-    lines += ["", "", *quote_lines(q, columns), f"-- {source}", "", now]
+    lines += ["", "", *text_lines(q, columns), f"-- {source}", "", now]
     return "\n".join(lines) + "\n"
 
 
@@ -274,35 +206,34 @@ def config(path: Path) -> dict:
     return {}
 
 
-def print_cmd(args: argparse.Namespace) -> int:
+def receipt_settings(args: argparse.Namespace) -> tuple[dict, int, dict[str, float]] | int:
     cfg = config(Path(args.config))
     receipt = cfg.get("receipt", {})
-    printer = cfg.get("printer", {})
     columns = int(args.columns or receipt.get("columns") or 35)
     cost_model = cost_key(args.cost_model or cfg.get("cost", {}).get("model") or DEFAULT_COST_MODEL)
     rates = costs(cfg).get(cost_model)
     if not rates:
-        print(f"codex-receipt: unknown cost model {cost_model!r}", file=sys.stderr)
+        print(f"{PROG}: unknown cost model {cost_model!r}", file=sys.stderr)
         return 2
+    return cfg, columns, rates
+
+
+def output_cmd(args: argparse.Namespace, cfg: dict, text: str) -> int:
+    printer = cfg.get("printer", {})
     try:
-        text = render(args, threads(Path(args.state_db).expanduser(), args.repo_root, args.pr_branch), columns, rates)
-    except OSError as e:
-        print(f"codex-receipt: {e}", file=sys.stderr)
-        return 2
-    if args.dry_run:
-        print(text, end="")
-        return 0
-    device = args.device or printer.get("device") or ""
-    if not device and (args.model or printer.get("model")):
-        try:
-            device = find_printer(args.model or printer["model"])
-        except RuntimeError as e:
-            print(f"codex-receipt: {e}", file=sys.stderr)
+        if args.dry_run:
+            print(text, end="")
+            return 0
+        device = args.device or printer.get("device") or ""
+        if not device and (args.model or printer.get("model")):
+            try:
+                device = find_printer(args.model or printer["model"])
+            except RuntimeError as e:
+                print(f"{PROG}: {e}", file=sys.stderr)
+                return 2
+        if not device:
+            print(f"{PROG}: printer device not configured; use --dry-run or set printer.device/model", file=sys.stderr)
             return 2
-    if not device:
-        print("codex-receipt: printer device not configured; use --dry-run or set printer.device/model", file=sys.stderr)
-        return 2
-    try:
         send_printer(
             device,
             escpos(
@@ -314,12 +245,43 @@ def print_cmd(args: argparse.Namespace) -> int:
         )
         return 0
     except (OSError, subprocess.SubprocessError) as e:
-        print(f"codex-receipt: printer failed: {e}", file=sys.stderr)
+        print(f"{PROG}: printer failed: {e}", file=sys.stderr)
         return 2
 
 
+def print_cmd(args: argparse.Namespace) -> int:
+    settings = receipt_settings(args)
+    if isinstance(settings, int):
+        return settings
+    cfg, columns, rates = settings
+    try:
+        text = render(args, codex.threads(Path(args.state_db).expanduser(), args.repo_root, args.pr_branch), columns, rates)
+    except OSError as e:
+        print(f"{PROG}: {e}", file=sys.stderr)
+        return 2
+    return output_cmd(args, cfg, text)
+
+
+def mock_cmd(args: argparse.Namespace) -> int:
+    settings = receipt_settings(args)
+    if isinstance(settings, int):
+        return settings
+    cfg, columns, rates = settings
+    text = render(mock_data.args(), mock_data.rows(), columns, rates, mock_data.QUOTE)
+    return output_cmd(args, cfg, text)
+
+
+def add_output_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--config", default="~/.config/token-receipt/config.toml")
+    p.add_argument("--columns", type=int)
+    p.add_argument("--cost-model")
+    p.add_argument("--device")
+    p.add_argument("--model")
+    p.add_argument("--dry-run", action="store_true")
+
+
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="codex-receipt")
+    p = argparse.ArgumentParser(prog=PROG)
     sub = p.add_subparsers(dest="cmd", required=True)
     pr = sub.add_parser("print")
     pr.add_argument("--repo-root", required=True)
@@ -332,13 +294,11 @@ def parser() -> argparse.ArgumentParser:
     pr.add_argument("--summary", required=True)
     pr.add_argument("--pr-url")
     pr.add_argument("--state-db", default="~/.codex/state_5.sqlite")
-    pr.add_argument("--config", default="~/.config/codex-receipt/config.toml")
-    pr.add_argument("--columns", type=int)
-    pr.add_argument("--cost-model")
-    pr.add_argument("--device")
-    pr.add_argument("--model")
-    pr.add_argument("--dry-run", action="store_true")
+    add_output_args(pr)
     pr.set_defaults(func=print_cmd)
+    mock = sub.add_parser("mock")
+    add_output_args(mock)
+    mock.set_defaults(func=mock_cmd)
     return p
 
 

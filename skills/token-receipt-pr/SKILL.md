@@ -1,11 +1,11 @@
 ---
-name: codex-receipt-pr
-description: Run codex-receipt after creating or publishing a GitHub pull request. Use when Codex creates a PR for this repository and should print, or dry-run, a token usage receipt for that PR.
+name: token-receipt-pr
+description: Run token-receipt after creating or publishing a GitHub pull request. Use when Codex creates a PR for this repository and should print, or dry-run, a token usage receipt for that PR.
 ---
 
 # Codex Receipt PR
 
-After a PR exists, run `codex-receipt print` before the final response.
+After a PR exists, run `token-receipt print` before the final response.
 
 ## Summary
 
@@ -21,10 +21,10 @@ Set it as `PR_SUMMARY` before running the receipt command.
 
 ## Receipt
 
-From the repository root, collect PR metadata with `gh` and pass it to `codex-receipt`:
+From the repository root, collect PR metadata with `gh` and pass it to `token-receipt`:
 
 ```sh
-command -v codex-receipt >/dev/null || python3 -m pip install -e .
+command -v token-receipt >/dev/null || python3 -m pip install -e token-receipt
 
 PR_JSON="$(gh pr view --json number,title,baseRefName,headRefName,additions,deletions,url)" PR_SUMMARY="$PR_SUMMARY" python3 - <<'PY'
 import json
@@ -39,7 +39,7 @@ if not summary:
     raise SystemExit("PR_SUMMARY is required")
 
 cmd = [
-    "codex-receipt",
+    "token-receipt",
     "print",
     "--repo-root",
     repo_root,
@@ -65,7 +65,7 @@ result = subprocess.run(cmd)
 if result.returncode == 0:
     raise SystemExit(0)
 
-print("codex-receipt failed; retrying with --dry-run", file=sys.stderr)
+print("token-receipt failed; retrying with --dry-run", file=sys.stderr)
 raise SystemExit(subprocess.run([*cmd, "--dry-run"]).returncode)
 PY
 ```

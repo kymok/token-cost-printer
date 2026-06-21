@@ -28,7 +28,7 @@
 
 ### MVP
 
-1. `codex-receipt print` の CLI 引数から PR / branch / summary を受ける
+1. `token-receipt print` の CLI 引数から PR / branch / summary を受ける
 2. Codex SQLite から branch 関連 thread を取得する
 3. rollout JSONL から input / output を取得する
 4. ESC/POS で PR receipt を印字する

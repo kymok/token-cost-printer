@@ -32,7 +32,7 @@ font_a_columns = 35
 
 ## 2. 設定ファイル
 
-`~/.config/codex-receipt/config.toml`
+`~/.config/token-receipt/config.toml`
 
 ```toml
 [printer]
