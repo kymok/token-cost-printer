@@ -78,6 +78,10 @@ def row_usage(row: dict) -> Usage:
     return codex.latest_usage(row["rollout_path"], row["tokens_used"])
 
 
+def history_title(row: dict) -> str:
+    return (str(row.get("title") or row["id"]).splitlines() or [""])[0]
+
+
 def render(
     args: argparse.Namespace,
     rows: list[dict],
@@ -113,7 +117,7 @@ def render(
     for row, usage in usages:
         lines.append("")
         lines += [
-            *text_lines(row["title"] or row["id"], columns),
+            *text_lines(history_title(row), columns),
             *([] if not row.get("model") else text_lines(display_model(str(row["model"])), columns)),
             *usage_lines(usage, columns, rates),
         ]
