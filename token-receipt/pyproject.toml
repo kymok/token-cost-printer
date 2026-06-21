@@ -8,10 +8,10 @@ version = "0.1.0"
 requires-python = ">=3.11"
 
 [project.scripts]
-token-receipt = "codex_receipt:main"
+token-receipt = "token_receipt:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-codex_receipt = ["quotes.jsonl"]
+token_receipt = ["quotes.jsonl"]

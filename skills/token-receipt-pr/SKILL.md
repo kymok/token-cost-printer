@@ -1,9 +1,9 @@
 ---
 name: token-receipt-pr
-description: Run token-receipt after creating or publishing a GitHub pull request. Use when Codex creates a PR for this repository and should print, or dry-run, a token usage receipt for that PR.
+description: Run token-receipt after creating or publishing a GitHub pull request. Use when a PR should print, or dry-run, a token usage receipt.
 ---
 
-# Codex Receipt PR
+# Token Receipt PR
 
 After a PR exists, run `token-receipt print` before the final response.
 
@@ -21,10 +21,13 @@ Set it as `PR_SUMMARY` before running the receipt command.
 
 ## Receipt
 
-From the repository root, collect PR metadata with `gh` and pass it to `token-receipt`:
+From the repository root, verify `token-receipt` is installed, collect PR metadata with `gh`, and pass it to `token-receipt`:
 
 ```sh
-command -v token-receipt >/dev/null || python3 -m pip install -e token-receipt
+command -v token-receipt >/dev/null || {
+  echo "token-receipt is not installed. Run: pipx install --editable ./token-receipt" >&2
+  exit 127
+}
 
 PR_JSON="$(gh pr view --json number,title,baseRefName,headRefName,additions,deletions,url)" PR_SUMMARY="$PR_SUMMARY" python3 - <<'PY'
 import json

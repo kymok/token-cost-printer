@@ -1,4 +1,4 @@
 interface:
-  display_name: "Codex Receipt PR"
+  display_name: "Token Receipt PR"
   short_description: "Print PR token receipts after PR creation"
   default_prompt: "Use $token-receipt-pr after creating a pull request."

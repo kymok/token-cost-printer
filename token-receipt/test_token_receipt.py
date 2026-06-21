@@ -11,9 +11,9 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-import codex_receipt as c
-from codex_receipt import codex
-from codex_receipt import formatter
+import token_receipt as c
+from token_receipt import codex
+from token_receipt import formatter
 
 
 class ReceiptTest(unittest.TestCase):

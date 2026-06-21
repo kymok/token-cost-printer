@@ -4,18 +4,20 @@ Codex のローカル状態から、PR ブランチに紐づく thread の token
 
 ## インストール
 
-Python 3.11 以上が必要です。
+Python 3.11 以上と `pipx` が必要です。
 
 ```sh
-python3 -m pip install -e token-receipt
+brew install pipx
+pipx ensurepath
+pipx install --editable ./token-receipt
 ```
 
 インストール後、`token-receipt` コマンドが使えます。
 
-アンインストールも同じ名前です。
+アンインストール:
 
 ```sh
-python3 -m pip uninstall token-receipt
+pipx uninstall token-receipt
 ```
 
 ## まず表示だけ試す
@@ -75,7 +77,6 @@ model = "gpt-5.5"
 ```sh
 token-receipt mock --dry-run
 token-receipt mock
-token-receipt/scripts/print-demo-receipt.py
 ```
 
 追加の `--device`、`--model`、`--config`、`--cost-model` は `mock` でも使えます。
