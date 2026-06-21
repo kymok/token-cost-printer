@@ -3,7 +3,7 @@ name: token-receipt-pr
 description: Run token-receipt after creating or publishing a GitHub pull request. Use when a PR should print, or dry-run, a token usage receipt.
 ---
 
-# Token Receipt PR
+# Token Receipt (PR)
 
 After a PR exists, run `token-receipt print` before the final response.
 
