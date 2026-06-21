@@ -4,7 +4,7 @@
 
 #### 入力元
 
-`codex-receipt print` のコマンドライン引数。
+`token-receipt print` のコマンドライン引数。
 
 #### 入力
 

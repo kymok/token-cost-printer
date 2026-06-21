@@ -1,15 +1,19 @@
 import argparse
+import io
 import json
 import sqlite3
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-import codex_receipt as c
+import token_receipt as c
+from token_receipt import codex
+from token_receipt import formatter
 
 
 class ReceiptTest(unittest.TestCase):
@@ -36,11 +40,11 @@ class ReceiptTest(unittest.TestCase):
             con.commit()
             con.close()
 
-            rows = c.threads(db, str(root), "feature")
+            rows = codex.threads(db, str(root), "feature")
             args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
             text = c.render(args, rows, 35)
 
-            self.assertIn("Input:     2.0K (C: 25%)", text)
+            self.assertIn("Input:     2.0K (C:25%)", text)
             self.assertIn("Output:     600", text)
             self.assertIn("Reasoning:  100", text)
             self.assertIn("Total:     2.6K", text)
@@ -55,11 +59,11 @@ class ReceiptTest(unittest.TestCase):
         rows = [{"id": "1", "title": "One", "model": "gpt-5.4-mini", "rollout_path": None, "tokens_used": 0}]
         rates = c.DEFAULT_COSTS["gpt-5.5"]
 
-        with patch.object(c, "latest_usage", return_value=usage):
+        with patch.object(codex, "latest_usage", return_value=usage):
             text = c.render(args, rows, 35, rates)
 
         self.assertIn("One\nGPT-5.4-Mini\nInput:", text)
-        self.assertEqual(text.count("Input:     1.2M (C: 88%)   1.25 USD"), 2)
+        self.assertEqual(text.count("Input:     1.2M (C:88%)    1.25 USD"), 2)
         self.assertEqual(text.count("Output:     10K            0.30 USD"), 2)
 
     def test_cost_uses_cached_input_rate(self):
@@ -75,10 +79,10 @@ class ReceiptTest(unittest.TestCase):
     def test_quote_has_two_blank_lines_before_it(self):
         args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
 
-        with patch.object(c.random, "choice", return_value=("Quote", "Source")):
+        with patch.object(c.random, "choice", return_value=("Quote; here", "Source")):
             text = c.render(args, [], 35)
 
-        self.assertRegex(text, r"-- HISTORY --\n\n\nQuote\n-- Source\n\n\d{4}-\d{2}-\d{2}T")
+        self.assertRegex(text, r"-- HISTORY --\n\n\nQuote; here\n-- Source\n\n\d{4}-\d{2}-\d{2}T")
 
     def test_history_entries_have_one_blank_line_between_them(self):
         args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
@@ -97,18 +101,61 @@ class ReceiptTest(unittest.TestCase):
 
         self.assertIn("Reasoning: 7.5K", lines)
 
-    def test_quote_lines_remove_semicolons_and_wrap_at_spaces(self):
-        lines = c.quote_lines("Keep the receipt; supercalifragilisticexpialidocious.", 20)
+    def test_formatter_rejects_too_few_columns(self):
+        with self.assertRaises(ValueError):
+            c.usage_lines(c.Usage(input=1000), 34)
+        with self.assertRaises(ValueError):
+            c.text_lines("too narrow", 34)
 
-        self.assertNotIn(";", "\n".join(lines))
+    def test_formatter_exports_only_high_level_functions(self):
+        self.assertEqual(formatter.__all__, ["dollars", "text_lines", "token", "usage_lines"])
+        self.assertFalse(hasattr(formatter, "width"))
+        self.assertFalse(hasattr(formatter, "_clip"))
+        self.assertFalse(hasattr(formatter, "_core"))
+        self.assertFalse(hasattr(formatter, "quote_lines"))
+        self.assertFalse(hasattr(formatter, "summary_lines"))
+        self.assertFalse(hasattr(c, "width"))
+        self.assertFalse(hasattr(c, "_clip"))
+        self.assertFalse(hasattr(c, "quote_lines"))
+        self.assertFalse(hasattr(c, "summary_lines"))
+
+    def test_render_wraps_long_title(self):
+        args = argparse.Namespace(pr_number="1", pr_title="one two three four five six seven eight nine", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
+
+        with patch.object(c.random, "choice", return_value=("Quote", "Source")):
+            text = c.render(args, [], 35)
+
+        self.assertIn("one two three four five six seven\neight nine\nmain ← feature", text)
+
+    def test_text_lines_wrap_at_spaces(self):
+        lines = c.text_lines("Keep the receipt; supercalifragilisticexpialidocious.", 35)
+
         self.assertFalse(any(line.endswith("-") for line in lines))
         self.assertIn("supercalifragilisticexpialidocious.", lines)
-        self.assertIn("acceptable.", "\n".join(c.quote_lines("CI says possible. Review says acceptable.", 35)))
+        self.assertIn("acceptable.", "\n".join(c.text_lines("CI says possible. Review says acceptable.", 35)))
 
-    def test_summary_lines_wrap_and_stop_at_eight_lines(self):
-        lines = c.summary_lines("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen", 10)
+    def test_render_wraps_summary_and_stops_at_eight_lines(self):
+        summary = "\n".join(str(i) for i in range(9))
+        args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary=summary)
 
-        self.assertEqual(lines, ["one two", "three four", "five six", "seven", "eight nine", "ten eleven", "twelve", "thirteen"])
+        with patch.object(c.random, "choice", return_value=("Quote", "Source")):
+            text = c.render(args, [], 35)
+
+        self.assertIn("0\n1\n2\n3\n4\n5\n6\n7\n\nInput:", text)
+        self.assertNotIn("\n8\n", text)
+
+    def test_mock_command_renders_fixed_data(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = io.StringIO()
+            with redirect_stdout(out):
+                code = c.main(["mock", "--dry-run", "--config", str(Path(d) / "missing.toml")])
+
+        self.assertEqual(code, 0)
+        text = out.getvalue()
+        self.assertIn("Mock receipt layout check", text)
+        self.assertIn("Mock implementation thread", text)
+        self.assertIn("Mock review and polish thread", text)
+        self.assertIn("Mock receipts should be boring on", text)
 
     def test_escpos_enables_shift_jis_kanji_mode(self):
         data = c.escpos("2026-06-18T12:00:00\n\n\n-- PR CREATED --\n\n\nmain ← feature\n", "cp932", False)

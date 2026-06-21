@@ -4,7 +4,7 @@
 
 ### 1.1 トリガー
 
-`codex-receipt print` を実行したとき。
+`token-receipt print` を実行したとき。
 
 ### 1.2 処理
 
@@ -35,7 +35,7 @@
 
 ### 2.1 トリガー
 
-`codex-receipt print` を実行したとき。
+`token-receipt print` を実行したとき。
 
 ### 2.2 印字フォーマット
 
