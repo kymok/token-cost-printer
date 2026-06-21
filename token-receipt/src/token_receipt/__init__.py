@@ -144,9 +144,7 @@ def escpos(text: str, encoding: str, cut: bool, kanji: bool = True) -> bytes:
 
 def send_printer(device: str, data: bytes) -> None:
     if device.startswith("/"):
-        with open(device, "ab", buffering=0) as f:
-            f.write(data)
-        return
+        raise ValueError("printer.device must be a CUPS printer name")
     lpr = "/usr/bin/lpr" if Path("/usr/bin/lpr").exists() else "lpr"
     subprocess.run([lpr, "-P", device, "-o", "raw"], input=data, check=True)
 
@@ -199,11 +197,73 @@ def find_printer(model: str) -> str:
     raise RuntimeError(f"multiple CUPS printers match printer.model={model!r}: {', '.join(matches)}")
 
 
+def find_printer_by_name_prefix(prefix: str) -> str:
+    matches = [name for name in cups_printers() if name.casefold().startswith(prefix.casefold())]
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        raise RuntimeError(f"no CUPS printer name starts with {prefix!r}")
+    raise RuntimeError(f"multiple CUPS printer names start with {prefix!r}: {', '.join(matches)}")
+
+
+def find_setup_printer(prefix: str, model: str) -> str:
+    if prefix:
+        return find_printer_by_name_prefix(prefix)
+    return find_printer(model)
+
+
+def list_cups_devices() -> str:
+    return subprocess.check_output(["lpstat", "-v"], text=True)
+
+
 def config(path: Path) -> dict:
     if path.expanduser().exists():
         with open(path.expanduser(), "rb") as f:
             return tomllib.load(f)
     return {}
+
+
+def toml_string(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def section_name(line: str) -> str | None:
+    s = line.split("#", 1)[0].strip()
+    if s.startswith("[") and s.endswith("]") and not s.startswith("[["):
+        return s[1:-1].strip()
+    return None
+
+
+def set_printer_device(path: Path, device: str) -> None:
+    path = path.expanduser()
+    line = f"device = {toml_string(device)}"
+    if path.exists():
+        lines = path.read_text(encoding="utf-8").splitlines()
+    else:
+        lines = []
+    out = []
+    in_printer = found = wrote = False
+    for old in lines:
+        section = section_name(old)
+        if section is not None:
+            if in_printer and not wrote:
+                out.append(line)
+                wrote = True
+            in_printer = section == "printer"
+            found = found or in_printer
+        if in_printer and old.split("#", 1)[0].split("=", 1)[0].strip() == "device":
+            out.append(line)
+            wrote = True
+            continue
+        out.append(old)
+    if found and not wrote:
+        out.append(line)
+    if not found:
+        if out and out[-1].strip():
+            out.append("")
+        out.extend(["[printer]", line])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
 def receipt_settings(args: argparse.Namespace) -> tuple[dict, int, dict[str, float]] | int:
@@ -244,7 +304,7 @@ def output_cmd(args: argparse.Namespace, cfg: dict, text: str) -> int:
             ),
         )
         return 0
-    except (OSError, subprocess.SubprocessError) as e:
+    except (OSError, subprocess.SubprocessError, ValueError) as e:
         print(f"{PROG}: printer failed: {e}", file=sys.stderr)
         return 2
 
@@ -269,6 +329,26 @@ def mock_cmd(args: argparse.Namespace) -> int:
     cfg, columns, rates = settings
     text = render(mock_data.args(), mock_data.rows(), columns, rates, mock_data.QUOTE)
     return output_cmd(args, cfg, text)
+
+
+def setup_cmd(args: argparse.Namespace) -> int:
+    prefix = args.device_prefix or ""
+    model = args.model or ""
+    if not prefix and not model:
+        try:
+            print(list_cups_devices(), end="")
+        except (OSError, subprocess.SubprocessError) as e:
+            print(f"{PROG}: {e}", file=sys.stderr)
+            return 2
+        return 0
+    try:
+        device = find_setup_printer(prefix, model)
+        set_printer_device(Path(args.config), device)
+    except (OSError, RuntimeError) as e:
+        print(f"{PROG}: {e}", file=sys.stderr)
+        return 2
+    print(f"{PROG}: set printer.device={device!r} in {Path(args.config).expanduser()}")
+    return 0
 
 
 def add_output_args(p: argparse.ArgumentParser) -> None:
@@ -299,6 +379,11 @@ def parser() -> argparse.ArgumentParser:
     mock = sub.add_parser("mock")
     add_output_args(mock)
     mock.set_defaults(func=mock_cmd)
+    setup = sub.add_parser("setup")
+    setup.add_argument("device_prefix", nargs="?")
+    setup.add_argument("--config", default="~/.config/token-receipt/config.toml")
+    setup.add_argument("--model")
+    setup.set_defaults(func=setup_cmd)
     return p
 
 
