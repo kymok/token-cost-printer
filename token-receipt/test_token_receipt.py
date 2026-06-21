@@ -164,6 +164,20 @@ class ReceiptTest(unittest.TestCase):
         self.assertIn("←".encode("cp932"), data)
         self.assertIn(b"\x1ba\x01\x1bE\x01-- PR CREATED --\n\x1bE\x00\x1ba\x00", data)
 
+    def test_tm_m10_profile_uses_font_b_and_42_columns(self):
+        args = argparse.Namespace(columns=None)
+        cfg = {"receipt": {"columns": 35}}
+
+        profile = c.printer_profile("TM_m10_New")
+
+        self.assertEqual(c.receipt_columns(args, cfg, "TM_m10_New"), 42)
+        self.assertEqual(profile["font"], b"\x1bM\x01")
+
+    def test_escpos_applies_profile_font_code(self):
+        data = c.escpos("body\n", "cp932", False, font=c.printer_profile("tm-m10")["font"])
+
+        self.assertTrue(data.startswith(b"\x1b@\x1cC\x01\x1c&\x1bM\x01"))
+
     def test_escpos_feeds_before_cut(self):
         data = c.escpos("-- PR CREATED --\n\nbody\n", "cp932", True)
 
@@ -190,6 +204,16 @@ class ReceiptTest(unittest.TestCase):
             c.send_printer("EPSON_TM_m10_JPN", b"receipt")
 
         run.assert_called_once_with(["lpr", "-P", "EPSON_TM_m10_JPN", "-o", "raw"], input=b"receipt", check=True)
+
+    def test_output_uses_profile_font_for_matching_cups_name(self):
+        args = argparse.Namespace(dry_run=False)
+        cfg = {"printer": {"encoding": "cp932", "cut": False, "kanji": True}}
+
+        with patch.object(c.Path, "exists", return_value=False), patch.object(c.subprocess, "run") as run:
+            code = c.output_cmd(args, cfg, "body\n", "TM_m10_New")
+
+        self.assertEqual(code, 0)
+        self.assertTrue(run.call_args.kwargs["input"].startswith(b"\x1b@\x1cC\x01\x1c&\x1bM\x01"))
 
     def test_rejects_device_path_printing(self):
         with patch.object(c.subprocess, "run") as run, self.assertRaises(ValueError):
@@ -222,7 +246,7 @@ class ReceiptTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as d, patch.object(c.subprocess, "check_output", side_effect=output):
             path = Path(d) / "config.toml"
-            path.write_text('[printer]\nmodel = "EPSON TM-m10"\ndevice = ""\nencoding = "cp932"\n\n[receipt]\ncolumns = 35\n', encoding="utf-8")
+            path.write_text('[printer]\nmodel = "EPSON TM-m10"\ndevice = ""\nencoding = "cp932"\n\n[receipt]\ncolumns = 42\n', encoding="utf-8")
 
             with redirect_stdout(io.StringIO()):
                 code = c.main(["setup", "TM_m10", "--config", str(path)])

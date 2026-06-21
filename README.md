@@ -71,13 +71,14 @@ cut = true
 kanji = true
 
 [receipt]
-columns = 35
+columns = 42
 
 [cost]
 model = "gpt-5.5"
 ```
 
 `device` には CUPS プリンタ名を指定します。
+TM-m10 は CUPS 名の一致で Font B、42桁（漢字21桁）になります。
 
 ## 実機確認用のダミー印字
 
