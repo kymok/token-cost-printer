@@ -96,15 +96,19 @@ class ReceiptTest(unittest.TestCase):
 
         self.assertIn("Total:     1\n\nTwo\nInput:", text)
 
-    def test_history_uses_title_first_line_only(self):
+    def test_history_uses_title_first_line_only_and_clips_to_columns(self):
         args = argparse.Namespace(pr_number="1", pr_title="Title", target_branch="main", pr_branch="feature", additions="2", deletions="1", summary="hello")
-        rows = [{"id": "1", "title": "Keep this title\nhide this body", "model": "gpt-5.4-mini", "rollout_path": None, "tokens_used": 1}]
+        rows = [{"id": "1", "title": "12345678901234567890123456789012345TRAIL\nhide this body", "model": "gpt-5.4-mini", "rollout_path": None, "tokens_used": 1}]
 
         with patch.object(c.random, "choice", return_value=("Quote", "Source")):
             text = c.render(args, rows, 35)
 
-        self.assertIn("Keep this title\nGPT-5.4-Mini\nInput:", text)
+        self.assertIn("12345678901234567890123456789012345\nGPT-5.4-Mini\nInput:", text)
+        self.assertNotIn("TRAIL", text)
         self.assertNotIn("hide this body", text)
+
+    def test_history_title_clips_wide_characters(self):
+        self.assertEqual(c.history_title({"id": "1", "title": "漢" * 22}, 42), "漢" * 21)
 
     def test_usage_lines_keep_one_space_after_reasoning_for_four_digits(self):
         lines = c.usage_lines(c.Usage(input=1000, output=5300, reasoning=7500, total=2300), 35)

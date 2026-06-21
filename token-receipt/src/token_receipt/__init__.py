@@ -7,6 +7,7 @@ import re
 import subprocess
 import sys
 import tomllib
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -78,8 +79,20 @@ def row_usage(row: dict) -> Usage:
     return codex.latest_usage(row["rollout_path"], row["tokens_used"])
 
 
-def history_title(row: dict) -> str:
-    return (str(row.get("title") or row["id"]).splitlines() or [""])[0]
+def clip_columns(text: str, columns: int) -> str:
+    out = ""
+    used = 0
+    for c in text:
+        w = 2 if unicodedata.east_asian_width(c) in "FW" else 1
+        if used + w > columns:
+            break
+        out += c
+        used += w
+    return out
+
+
+def history_title(row: dict, columns: int) -> str:
+    return clip_columns((str(row.get("title") or row["id"]).splitlines() or [""])[0], columns)
 
 
 def render(
@@ -117,7 +130,7 @@ def render(
     for row, usage in usages:
         lines.append("")
         lines += [
-            *text_lines(history_title(row), columns),
+            history_title(row, columns),
             *([] if not row.get("model") else text_lines(display_model(str(row["model"])), columns)),
             *usage_lines(usage, columns, rates),
         ]
